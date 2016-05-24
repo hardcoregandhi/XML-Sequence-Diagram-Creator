@@ -25,6 +25,7 @@ using namespace std;
 using namespace tinyxml2;
 
 const int cClassLineLength = 2500;
+const int cSceneSizeIncrement = 2500;
 const int cHorizontalSpacing = 150; //steps
 const int cVerticalSpacing = 30; //steps
 const QString cIcdLocation = "/home/jryan/simulation/dev/common/icd/";
@@ -404,6 +405,8 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
     //Draw Subscribed data
     foreach (SubMessage* sMsg, _icd.v_pSubscribedMessages) {
 
+        CheckUnsortedSceneResize();
+
         bool newModelToBeDrawn = true;
         DrawnModelObject* newModelObject = new DrawnModelObject;
 
@@ -479,6 +482,8 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
 
     //Draw Published data
     foreach (PubMessage* pMsg, _icd.v_pPublishedMessages) {
+
+        CheckUnsortedSceneResize();
 
         bool newModelToBeDrawn = true;
 
@@ -571,6 +576,10 @@ void MainWindow::SetupDrawingArea()
     verticalSpacing = 150;
     functionHorizontalSpacing = 350;
     functionVerticalSpacing = 150;
+    sceneUnsortedHorizontalSizing = 2500;
+    sceneUnsortedVerticalSizing = 2500;
+    sceneFunctionHorizontalSizing = 2500;
+    sceneFunctionVerticalSizing = 2500;
 
     if(icdScene)
     {
@@ -837,6 +846,34 @@ QPolygonF MainWindow::CreateArrowHead(QLineF arrowLine, bool rightPointing)
     return arrowPoly;
 }
 
+void MainWindow::CheckFunctionSceneResize()
+{
+    if(functionHorizontalSpacing > sceneFunctionHorizontalSizing)
+    {
+        sceneFunctionHorizontalSizing += cSceneSizeIncrement;
+
+    }
+    if(functionVerticalSpacing > sceneFunctionVerticalSizing)
+    {
+        sceneFunctionVerticalSizing += cSceneSizeIncrement;
+    }
+    functionScene->setSceneRect(0,0,sceneFunctionHorizontalSizing,sceneFunctionVerticalSizing);
+}
+
+void MainWindow::CheckUnsortedSceneResize()
+{
+    if(horizontalSpacing > sceneUnsortedHorizontalSizing)
+    {
+        sceneUnsortedHorizontalSizing += cSceneSizeIncrement;
+
+    }
+    if(verticalSpacing > sceneUnsortedVerticalSizing)
+    {
+//        sceneUnsortedVerticalSizing += cSceneSizeIncrement;
+    }
+    icdScene->setSceneRect(0,0,sceneUnsortedHorizontalSizing,sceneUnsortedVerticalSizing);
+}
+
 void MainWindow::RedrawFunctionScene()
 {
     pilotModelObject = functionDrawnModels[0];
@@ -864,7 +901,9 @@ void MainWindow::RedrawFunctionScene()
     DiagramTitle->setFont(f);
     functionScene->addWidget(DiagramTitle);
 
-    foreach (DrawnModelObject* dmo, functionDrawnModels) {
+    foreach (DrawnModelObject* dmo, functionDrawnModels) { 
+
+        CheckFunctionSceneResize();
 
         dmo->rect.setY(50);
         dmo->rect.setX(functionHorizontalSpacing);
@@ -890,6 +929,10 @@ void MainWindow::RedrawFunctionScene()
     }
 
     foreach (DrawnDataObject* doo, functionDrawnData) {
+
+        CheckFunctionSceneResize();
+
+
         if(doo->pubOrSub == "pub"){
             doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, targetModelObject->line.p1().x(), functionVerticalSpacing);
             doo->arrowPoly=CreateArrowHead(doo->line, true);
@@ -971,7 +1014,6 @@ void MainWindow::SaveFunctionScene()
 
 void MainWindow::LoadFunctionScene()
 {
-
     //Clear everything out
     functionDrawnModels.clear();
     functionDrawnData.clear();
@@ -1069,6 +1111,14 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
 {
     horizontalSpacing = 200;
     verticalSpacing = 150;
+    functionHorizontalSpacing = 350;
+    functionVerticalSpacing = 150;
+    sceneUnsortedHorizontalSizing = 2500;
+    sceneUnsortedVerticalSizing = 2500;
+    sceneFunctionHorizontalSizing = 2500;
+    sceneFunctionVerticalSizing = 2500;
+
+    //draw diagram
     const char* selectedEntry = _item->text().toUtf8().constData();
         // This is the first item.
     foreach (ICD icd, v_ICDs) {
@@ -1083,6 +1133,7 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     ui->graphicsView->verticalScrollBar()->setValue(0);
     ui->graphicsView->update();
 
+    //update Function msg browser
     subItems.clear(); //MEMORY LEAKS
     pubItems.clear(); //MEMORY LEAKS
     ui->messageBrowser->topLevelItem(0)->takeChildren();
@@ -1122,12 +1173,34 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     ui->messageBrowser->topLevelItem(0)->addChildren(subItems);
     ui->messageBrowser->topLevelItem(1)->addChildren(pubItems);
 
-    SetupDrawingArea();
+//    SetupDrawingArea();
     ResetScroll();
+
+    //update task FunctionList
+    ui->taskFunctionList->clear();
+
+    QString dir = "/home/jryan/simulation/dev/common/icd/STDs/"+QString::fromStdString(selectedICD.name)+"/Functions";
+
+    QDirIterator it(dir, QStringList() << "*.function", QDir::Files, QDirIterator::NoIteratorFlags);
+
+    while (it.hasNext())
+    {
+        QString temp = it.next();
+        temp.remove(dir);
+        ui->taskFunctionList->addItem(temp);
+    }
 }
 
 void MainWindow::onAddDataExchangeClicked()
 {
+    if(ui->messageBrowser->currentItem()== NULL)
+    {
+        ui->statusBar->showMessage("ERROR: No entry selected");
+        return;
+    }
+
+    CheckFunctionSceneResize();
+
     SubMessage* selectedSub;
     PubMessage* selectedPub;
     MessageParameter* selectedPubParameter;
@@ -1546,6 +1619,8 @@ void MainWindow::onAddDataExchangeClicked()
 
 void MainWindow::onAddPilotInteraction()
 {
+    CheckFunctionSceneResize();
+
     bool ok;
     QString text = QInputDialog::getText(this, tr("Add Pilot Interaction"),
                                            tr("Pilot Action:"), QLineEdit::Normal,
@@ -1556,7 +1631,7 @@ void MainWindow::onAddPilotInteraction()
         DrawnModelObject* targetModelObject = functionDrawnModels[1];
 
         QLineF dataArrow = QLine(targetModelObject->line.p1().x(), functionVerticalSpacing, pilotModelObject->line.p1().x(), functionVerticalSpacing);
-        QPolygonF arrowPoly = CreateArrowHead(dataArrow, true);
+        QPolygonF arrowPoly = CreateArrowHead(dataArrow, false);
         functionScene->addLine(dataArrow);
         functionScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
 
@@ -1708,4 +1783,3 @@ void MainWindow::onFunctionDropdownMenuClicked(QAction * _action)
     functionSelectedDataObject = NULL;
     RedrawFunctionScene();
 }
-

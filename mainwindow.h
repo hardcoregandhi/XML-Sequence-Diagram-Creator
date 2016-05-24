@@ -219,6 +219,9 @@ public:
     void DrawUnsortedDiagram(ICD _icd);
     QPolygonF CreateArrowHead(QLineF arrowLine, bool rightPointing);
 
+    void CheckFunctionSceneResize();
+    void CheckUnsortedSceneResize();
+
     void RedrawFunctionScene();
     void SaveFunctionScene();
     void LoadFunctionScene();
@@ -247,6 +250,8 @@ private:
     QGraphicsView*  icdView;
     int horizontalSpacing;
     int verticalSpacing;
+    int sceneUnsortedHorizontalSizing;
+    int sceneUnsortedVerticalSizing;
 
     QGraphicsScene* functionScene;
     QGraphicsView*  functionView;
@@ -256,6 +261,8 @@ private:
     QVector<DrawnDataObject*> functionDrawnData;
     int functionHorizontalSpacing;
     int functionVerticalSpacing;
+    int sceneFunctionHorizontalSizing;
+    int sceneFunctionVerticalSizing;
     QList<QTreeWidgetItem *> subItems;
     QList<QTreeWidgetItem *> pubItems;
     QList<QTreeWidgetItem *> pubOrSub;
@@ -265,6 +272,7 @@ private:
     QString functionTitle;
     DrawnModelObject* pilotModelObject;
     DrawnModelObject* targetModelObject;
+
 };
 
 #endif // MAINWINDOW_H
