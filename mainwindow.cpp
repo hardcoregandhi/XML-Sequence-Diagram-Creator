@@ -816,7 +816,7 @@ QPolygonF MainWindow::CreateArrowHead(QLineF arrowLine, bool rightPointing)
     QPointF arrowRight;
     QPointF arrowLeft;
 
-    if(!rightPointing)
+    if(rightPointing)
     {
         arrowPoint = QPointF(arrowLine.p2());
         arrowRight = QPointF(arrowPoint.x()+10,arrowPoint.y()-5);
@@ -839,6 +839,9 @@ QPolygonF MainWindow::CreateArrowHead(QLineF arrowLine, bool rightPointing)
 
 void MainWindow::RedrawFunctionScene()
 {
+    pilotModelObject = functionDrawnModels[0];
+    targetModelObject = functionDrawnModels[1];
+
     functionHorizontalSpacing = 50;
     functionVerticalSpacing = 150;
 
@@ -862,8 +865,11 @@ void MainWindow::RedrawFunctionScene()
     functionScene->addWidget(DiagramTitle);
 
     foreach (DrawnModelObject* dmo, functionDrawnModels) {
+
+        dmo->rect.setY(50);
         dmo->rect.setX(functionHorizontalSpacing);
         dmo->rect.setWidth(100);
+        dmo->rect.setHeight(50);
         QPointF midPoint = QLineF(dmo->rect.bottomLeft(),dmo->rect.bottomRight()).pointAt(0.5);
         QLineF classLine = QLineF(midPoint, QPointF(midPoint.x(), midPoint.y() + cClassLineLength));
         dmo->midpoint = midPoint;
@@ -885,16 +891,16 @@ void MainWindow::RedrawFunctionScene()
 
     foreach (DrawnDataObject* doo, functionDrawnData) {
         if(doo->pubOrSub == "pub"){
-            doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, functionDrawnModels[1]->line.p1().x(), functionVerticalSpacing);
+            doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, targetModelObject->line.p1().x(), functionVerticalSpacing);
             doo->arrowPoly=CreateArrowHead(doo->line, true);
         }
         else if(doo->pubOrSub == "sub"){
-            doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, functionDrawnModels[1]->line.p1().x(), functionVerticalSpacing);
+            doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, targetModelObject->line.p1().x(), functionVerticalSpacing);
             doo->arrowPoly=CreateArrowHead(doo->line, false);
         }
         else if(doo->pubOrSub == "pilot"){
-            doo->line = QLine(doo->line.p1().x(), functionVerticalSpacing, doo->line.p2().x(), functionVerticalSpacing);
-            doo->arrowPoly=CreateArrowHead(doo->line, true);
+            doo->line = QLine(targetModelObject->line.p1().x(), functionVerticalSpacing, doo->model->line.p2().x(), functionVerticalSpacing);
+            doo->arrowPoly=CreateArrowHead(doo->line, false);
         }
 
         functionScene->addLine(doo->line, QPen(Qt::black));
@@ -960,65 +966,75 @@ void MainWindow::SaveFunctionScene()
     diagram.Print(&printer);
     fclose(pFile);
 
-    qDebug() <<  "save done";
+    ui->statusBar->showMessage("Saving Complete");
 }
 
 void MainWindow::LoadFunctionScene()
 {
-    /*
+
+    //Clear everything out
+    functionDrawnModels.clear();
+    functionDrawnData.clear();
+    functionTitle.clear();
+
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
                                                     "/home/jryan/simulation/dev/common/icd/STDs/"+ QString::fromStdString(selectedICD.name) +"/Functions/",
                                                     tr("XML files (*.xml)"));
-    if(fileName==NULL)
+    //Cancel Catch
+    if(fileName == NULL)
     {
         ui->statusBar->showMessage("ERROR: Load Cancelled");
         return;
     }
+
     XMLDocument doc;
-    doc.LoadFile( filePath.c_str() );
+    doc.LoadFile( fileName.toStdString().c_str() );
+    XMLElement* root = doc.FirstChildElement();
+    functionTitle = root->Attribute("name");
 
-    fileName.remove(".xml");
-    fileName += ".xml";
-    QString fullDir = fileName;
-    fileName.remove(saveDirectory);
-    XMLDocument diagram;
-    diagram.SaveFile(fullDir.toStdString().c_str());// Creates the file.
-    FILE* pFile;
-    pFile = fopen(fullDir.toStdString().c_str(), "w");
-    if (pFile == NULL)
-        qDebug() << "error opening file";
+    for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
+    {
+        if(strcmp(element->Name(), "Models") == 0)
+        {
+            for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+            {
+                DrawnModelObject* dmo = new DrawnModelObject();
+                string dmoName = elementSubscribe->Attribute("name");
+                string dmoParsedName = elementSubscribe->Attribute("parsedName");
 
-    XMLPrinter printer(pFile);
+                dmo->name = dmoName;
+                dmo->parsedName= dmoParsedName;
 
-    printer.PushComment(selectedICD.name.c_str());
-    printer.OpenElement(functionTitle.toStdString().c_str());
+                functionDrawnModels.append(dmo);
+            }
+        }
 
-    printer.OpenElement("Models");
-    foreach (DrawnModelObject* dmo, functionDrawnModels) {
-        printer.OpenElement("ModelObject");
-        printer.PushAttribute("name", dmo->name.c_str());
-        printer.PushAttribute("parsedName", dmo->parsedName.c_str());
-        printer.CloseElement();
+        if(strcmp(element->Name(), "Data") == 0)
+        {
+
+            for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+            {
+                DrawnDataObject* ddo = new DrawnDataObject();
+                string ddoName = elementSubscribe->Attribute("name");
+                string ddoModel = elementSubscribe->Attribute("model");
+                string ddoPubOrSub = elementSubscribe->Attribute("pubOrSub");
+
+                ddo->name = ddoName;
+                foreach (DrawnModelObject* dmo, functionDrawnModels) {
+                    if(ddoModel == dmo->name)
+                        ddo->model = dmo;
+                }
+
+                ddo->pubOrSub = ddoPubOrSub;
+
+                functionDrawnData.append(ddo);
+            }
+        }
+
     }
-    printer.CloseElement();
 
-    printer.OpenElement("Data");
-    foreach (DrawnDataObject* ddo, functionDrawnData) {
-        printer.OpenElement("DataObject");
-        printer.PushAttribute("name", ddo->name.c_str());
-        printer.PushAttribute("model", ddo->model->name.c_str());
-        printer.PushAttribute("pubOrSub", ddo->pubOrSub.c_str());
-
-        printer.CloseElement();
-    }
-    printer.CloseElement();
-    printer.CloseElement();
-
-    diagram.Print(&printer);
-    fclose(pFile);
-
-    qDebug() <<  "save done";
-    */
+    ui->statusBar->showMessage("Loading Complete");
+    RedrawFunctionScene();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)

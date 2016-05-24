@@ -263,6 +263,8 @@ private:
     QPushButton* functionSelectedButton;
     DrawnDataObject* functionSelectedDataObject;
     QString functionTitle;
+    DrawnModelObject* pilotModelObject;
+    DrawnModelObject* targetModelObject;
 };
 
 #endif // MAINWINDOW_H
