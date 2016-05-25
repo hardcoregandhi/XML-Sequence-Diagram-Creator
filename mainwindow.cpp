@@ -28,6 +28,8 @@ const int cClassLineLength = 2500;
 const int cSceneSizeIncrement = 2500;
 const int cHorizontalSpacing = 150; //steps
 const int cVerticalSpacing = 30; //steps
+const int cTaskflowHorizontalMidpoint = 200;
+const int cTaskflowVerticalSpacing = 100;
 const QString cIcdLocation = "/home/jryan/simulation/dev/common/icd/";
 
 
@@ -75,6 +77,8 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onRenameFunction()));
     connect(ui->actionHome_All, SIGNAL(triggered()),this,
               SLOT(onHomeAllTriggered()));
+    connect(ui->addFunction, SIGNAL(clicked()),this,
+              SLOT(onAddFunctionToTask()));
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -352,9 +356,25 @@ void MainWindow::SetupFunctionBrowser()
 
 void MainWindow::SetupTaskflowScene()
 {
-    QRectF startCircle = QRectF(50,50,50,50);
+    DrawnTaskFunctions* startObject = new DrawnTaskFunctions;
+    startObject->name = "startObject";
+    startObject->dir = "";
+    taskflowDrawnFunctions.append(startObject);
+    QRectF startCircle = QRectF(cTaskflowHorizontalMidpoint-25, taskflowVerticalSpacing, 50, 50);
+
+    taskflowVerticalSpacing += cTaskflowVerticalSpacing;
 
     taskflowScene->addEllipse(startCircle, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
+
+    DrawnTaskFunctions* endObject = new DrawnTaskFunctions;
+    endObject->name = "endObject";
+    endObject->dir = "";
+    taskflowDrawnFunctions.append(endObject);
+    QRectF endCircle = QRectF(cTaskflowHorizontalMidpoint-25, taskflowVerticalSpacing, 50, 50);
+
+    taskflowVerticalSpacing += cTaskflowVerticalSpacing;
+
+    taskflowScene->addEllipse(endCircle, QPen(Qt::black, 10), QBrush(Qt::black, Qt::NoBrush));
 
     ui->taskflowGraphicsView->update();
 }
@@ -616,6 +636,7 @@ void MainWindow::SetupDrawingArea()
     sceneUnsortedVerticalSizing = 2500;
     sceneFunctionHorizontalSizing = 2500;
     sceneFunctionVerticalSizing = 2500;
+    taskflowVerticalSpacing = 100;
 
     if(icdScene)
     {
@@ -736,7 +757,7 @@ void MainWindow::SetupDrawingArea()
     if(taskflowScene)
     {
         ui->taskflowGraphicsView->items().clear();
-        taskflowScene->setSceneRect(0,0,2500,2500);
+        taskflowScene->setSceneRect(0,0,600,700);
         ui->taskflowGraphicsView->setScene(taskflowScene);
         ui->taskflowGraphicsView->setBackgroundBrush(Qt::white);
     }
@@ -1762,6 +1783,132 @@ void MainWindow::onRenameFunction()
     {
         functionTitle = text;
         RedrawFunctionScene();
+    }
+}
+
+void MainWindow::onAddFunctionToTask()
+{
+    if(ui->taskFunctionList->currentItem()== NULL)
+    {
+        ui->statusBar->showMessage("ERROR: No entry selected");
+        return;
+    }
+
+    QString functionName;
+
+    //Get the currently selected data
+    if(ui->taskFunctionList->currentItem()->text() != NULL)
+        functionName = ui->taskFunctionList->currentItem()->text();
+    else
+        return;
+
+    QString dir = "/home/jryan/simulation/dev/common/icd/STDs/"+QString::fromStdString(selectedICD.name)+"/Functions/";
+
+    QDirIterator it(dir, QStringList() << "*.xml", QDir::Files, QDirIterator::NoIteratorFlags);
+
+    while (it.hasNext())
+    {
+        QString fileName = it.next();
+        QString fileDir = fileName;
+        fileName.remove(dir);
+        fileName.remove(".xml");
+
+        if(fileName.compare(functionName) == 0)
+        {
+//            QRectF newTaskRect = QRect(cTaskflowHorizontalMidpoint-100,taskflowVerticalSpacing,200,50);
+//            QPointF midPoint = QLineF(newTaskRect.bottomLeft(),newTaskRect.bottomRight()).pointAt(0.5);
+//            QLineF line = QLineF(midPoint, midPoint);
+//            line.setP2(QPointF(midPoint.x(),midPoint.y()+50));
+
+//            QPushButton *newTaskFunctionName = new QPushButton(fileName);
+//            newTaskFunctionName->setText(fileName);
+//            newTaskFunctionName->setFlat(true);
+//            int width = newTaskFunctionName->fontMetrics().boundingRect(newTaskFunctionName->text()).width();
+//            newTaskFunctionName->move(midPoint.x() - width/2, midPoint.y()-30);
+
+//            QPolygonF arrowHead = CreateArrowHead(line,true);
+
+//            taskflowScene->addLine(line, QPen(Qt::black));
+//            taskflowScene->addRect(newTaskRect, QPen(Qt::black), QBrush(Qt::black, Qt::NoBrush));
+//            taskflowScene->addWidget(newTaskFunctionName);
+//            taskflowScene->addPolygon(arrowHead);
+
+            DrawnTaskFunctions* newTaskFunction = new DrawnTaskFunctions;
+            newTaskFunction->name = fileName;
+            newTaskFunction->dir = fileDir;
+//            newTaskFunction->line = line;
+//            newTaskFunction->label = newTaskFunctionName;
+//            newTaskFunction->arrowPoly = arrowHead;
+            taskflowDrawnFunctions.insert(taskflowDrawnFunctions.size()-1, newTaskFunction);
+
+            RedrawTaskflowScene();
+
+            break;
+        }
+
+    }
+
+
+}
+
+void MainWindow::RedrawTaskflowScene()
+{
+    taskflowVerticalSpacing = 100;
+
+    taskflowScene->clear();
+
+    QLineF line;
+    QRectF newTaskRect;
+    QPushButton *newTaskFunctionName = newTaskFunctionName;
+    QPolygonF arrowHead;
+
+    foreach (DrawnTaskFunctions* dtf, taskflowDrawnFunctions) {
+        if(dtf->name==("startObject"))
+        {
+            QRectF newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,50,50);
+            QPointF midPoint = QLineF(newTaskRect.bottomLeft(),newTaskRect.bottomRight()).pointAt(0.5);
+            QLineF line = QLineF(midPoint, midPoint);
+            line.setP2(QPointF(midPoint.x(),midPoint.y()+50));
+            QPolygonF arrowHead = CreateArrowHead(line,true);
+            taskflowScene->addEllipse(newTaskRect, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
+            taskflowScene->addLine(line, QPen(Qt::black));
+            taskflowScene->addPolygon(arrowHead);
+
+            dtf->arrowPoly = arrowHead;
+            dtf->line = line;
+        }
+        else if(dtf->name==("endObject"))
+        {
+            QRectF newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,50,50);
+            taskflowScene->addEllipse(newTaskRect, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
+        }
+        else
+        {
+            QRectF newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,200,50);
+            QPointF midPoint = QLineF(newTaskRect.bottomLeft(),newTaskRect.bottomRight()).pointAt(0.5);
+            QLineF line = QLineF(midPoint, midPoint);
+            line.setP2(QPointF(midPoint.x(),midPoint.y()+50));
+
+            QPushButton *newTaskFunctionName = new QPushButton(dtf->name);
+            newTaskFunctionName->setText(dtf->name);
+            newTaskFunctionName->setFlat(true);
+            int width = newTaskFunctionName->fontMetrics().boundingRect(newTaskFunctionName->text()).width();
+            newTaskFunctionName->move(midPoint.x() - width/2, midPoint.y()-30);
+            taskflowScene->addWidget(newTaskFunctionName);
+
+            QPolygonF arrowHead = CreateArrowHead(line,true);
+            taskflowScene->addPolygon(arrowHead);
+            taskflowScene->addLine(line, QPen(Qt::black));
+            taskflowScene->addRect(newTaskRect, QPen(Qt::black), QBrush(Qt::black, Qt::NoBrush));
+
+            dtf->label = newTaskFunctionName;
+            dtf->arrowPoly = arrowHead;
+            dtf->line = line;
+        }
+
+
+        taskflowVerticalSpacing += 100;
+
     }
 }
 

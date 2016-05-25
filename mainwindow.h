@@ -199,6 +199,15 @@ struct DrawnDataObject{
     int posY;
 };
 
+struct DrawnTaskFunctions{
+
+    QString name;
+    QString dir;
+    QLineF line;
+    QPolygonF arrowPoly;
+    QPushButton* label;
+};
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -228,6 +237,9 @@ public:
     void SaveFunctionScene();
     void LoadFunctionScene();
 
+    void RedrawTaskflowScene();
+
+
     Ui::MainWindow *ui;
 
 public slots:
@@ -244,6 +256,7 @@ public slots:
     void onLoadFunction(){LoadFunctionScene();}
     void onRenameFunction();
     void onHomeAllTriggered(){ResetScroll();}
+    void onAddFunctionToTask();
 
 private:
     QVector<ICD> v_ICDs;
@@ -278,6 +291,10 @@ private:
     DrawnModelObject* targetModelObject;
 
     QGraphicsScene* taskflowScene;
+    QVector<DrawnTaskFunctions*> taskflowDrawnFunctions;
+    int taskflowVerticalSpacing;
+
+
 
 };
 
