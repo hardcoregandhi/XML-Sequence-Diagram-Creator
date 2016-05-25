@@ -40,6 +40,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     icdScene = new QGraphicsScene();
     functionScene = new QGraphicsScene();
+    taskflowScene = new QGraphicsScene();
     icdBrowser = ui->messageBrowser;
 
     ParseXML();
@@ -48,6 +49,7 @@ MainWindow::MainWindow(QWidget *parent) :
     SetupIcdMenu();
     SetupDrawingArea();
     SetupContextMenu();
+    SetupTaskflowScene();
 
     connect(ui->listWidget, SIGNAL(itemClicked(QListWidgetItem *)),
                 this, SLOT(onListIcdClicked(QListWidgetItem *)));
@@ -71,6 +73,8 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onLoadFunction()));
     connect(ui->actionRename, SIGNAL(triggered()),this,
               SLOT(onRenameFunction()));
+    connect(ui->actionHome_All, SIGNAL(triggered()),this,
+              SLOT(onHomeAllTriggered()));
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -328,6 +332,33 @@ void MainWindow::SetupMessageBrowser()
     ui->messageBrowser->insertTopLevelItems(0, pubOrSub);
 }
 
+void MainWindow::SetupFunctionBrowser()
+{
+    //update task FunctionList
+    ui->taskFunctionList->clear();
+
+    QString dir = "/home/jryan/simulation/dev/common/icd/STDs/"+QString::fromStdString(selectedICD.name)+"/Functions/";
+
+    QDirIterator it(dir, QStringList() << "*.xml", QDir::Files, QDirIterator::NoIteratorFlags);
+
+    while (it.hasNext())
+    {
+        QString temp = it.next();
+        temp.remove(dir);
+        temp.remove(".xml");
+        ui->taskFunctionList->addItem(temp);
+    }
+}
+
+void MainWindow::SetupTaskflowScene()
+{
+    QRectF startCircle = QRectF(50,50,50,50);
+
+    taskflowScene->addEllipse(startCircle, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
+
+    ui->taskflowGraphicsView->update();
+}
+
 void MainWindow::SetupContextMenu()
 {
     functionDropdownMenu = new QMenu();
@@ -346,11 +377,16 @@ void MainWindow::SetupContextMenu()
 
 void MainWindow::ResetScroll()
 {
+    int currentindex = ui->tabWidget->currentIndex();
+
     ui->tabWidget->setCurrentIndex(0);
     onHomeTriggered();
     ui->tabWidget->setCurrentIndex(1);
     onHomeTriggered();
-    ui->tabWidget->setCurrentIndex(0);
+    ui->tabWidget->setCurrentIndex(2);
+    onHomeTriggered();
+
+    ui->tabWidget->setCurrentIndex(currentindex);
 }
 
 void MainWindow::onScrollEvent(int value)
@@ -621,7 +657,6 @@ void MainWindow::SetupDrawingArea()
         */
     }
 
-    //functionScene
     if(functionScene)
     {
         functionDrawnModels.clear();
@@ -697,6 +732,15 @@ void MainWindow::SetupDrawingArea()
         functionSelectedButton = NULL;
         functionSelectedDataObject = NULL;
     }
+
+    if(taskflowScene)
+    {
+        ui->taskflowGraphicsView->items().clear();
+        taskflowScene->setSceneRect(0,0,2500,2500);
+        ui->taskflowGraphicsView->setScene(taskflowScene);
+        ui->taskflowGraphicsView->setBackgroundBrush(Qt::white);
+    }
+
 }
 
 void MainWindow::SaveAllSequenceDiagrams()
@@ -1105,6 +1149,11 @@ void MainWindow::onHomeTriggered()
         ui->functionsGraphicsView->horizontalScrollBar()->setValue(0);
         ui->functionsGraphicsView->verticalScrollBar()->setValue(0);
     }
+    else if(ui->tabWidget->currentIndex() == 2)
+    {
+        ui->taskflowGraphicsView->horizontalScrollBar()->setValue(0);
+        ui->taskflowGraphicsView->verticalScrollBar()->setValue(0);
+    }
 }
 
 void MainWindow::onListIcdClicked(QListWidgetItem* _item)
@@ -1175,20 +1224,8 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
 
 //    SetupDrawingArea();
     ResetScroll();
+    SetupFunctionBrowser();
 
-    //update task FunctionList
-    ui->taskFunctionList->clear();
-
-    QString dir = "/home/jryan/simulation/dev/common/icd/STDs/"+QString::fromStdString(selectedICD.name)+"/Functions";
-
-    QDirIterator it(dir, QStringList() << "*.function", QDir::Files, QDirIterator::NoIteratorFlags);
-
-    while (it.hasNext())
-    {
-        QString temp = it.next();
-        temp.remove(dir);
-        ui->taskFunctionList->addItem(temp);
-    }
 }
 
 void MainWindow::onAddDataExchangeClicked()

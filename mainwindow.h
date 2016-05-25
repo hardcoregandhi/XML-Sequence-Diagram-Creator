@@ -210,6 +210,8 @@ public:
     void SetupIcdMenu();
     void SetupDrawingArea();
     void SetupMessageBrowser();
+    void SetupFunctionBrowser();
+    void SetupTaskflowScene();
     void SetupContextMenu();
     void ResetScroll();
 
@@ -241,6 +243,7 @@ public slots:
     void onSaveFunction(){SaveFunctionScene();}
     void onLoadFunction(){LoadFunctionScene();}
     void onRenameFunction();
+    void onHomeAllTriggered(){ResetScroll();}
 
 private:
     QVector<ICD> v_ICDs;
@@ -248,6 +251,7 @@ private:
 
     QGraphicsScene* icdScene;
     QGraphicsView*  icdView;
+
     int horizontalSpacing;
     int verticalSpacing;
     int sceneUnsortedHorizontalSizing;
@@ -272,6 +276,8 @@ private:
     QString functionTitle;
     DrawnModelObject* pilotModelObject;
     DrawnModelObject* targetModelObject;
+
+    QGraphicsScene* taskflowScene;
 
 };
 
