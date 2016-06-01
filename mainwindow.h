@@ -229,16 +229,17 @@ public:
 
     void DrawUnsortedDiagram(ICD _icd);
     QPolygonF CreateArrowHead(QLineF arrowLine, bool rightPointing);
+    QPolygonF CreateTaskArrowHead(QLineF arrowLine);
 
     void CheckFunctionSceneResize();
     void CheckUnsortedSceneResize();
+    void CheckTaskflowSceneResize();
 
     void RedrawFunctionScene();
     void SaveFunctionScene();
     void LoadFunctionScene();
 
     void RedrawTaskflowScene();
-
 
     Ui::MainWindow *ui;
 
@@ -251,12 +252,19 @@ public slots:
     void onAddPilotInteraction();
     void onFunctionDropdownMenuClicked(QAction*_action);
     void onDataObjectClicked();
-    void contextMenuRequested(const QPoint& point);
+    void functionContextMenuRequested(const QPoint& point);
+    void taskflowContextMenuRequested(const QPoint& point);
     void onSaveFunction(){SaveFunctionScene();}
     void onLoadFunction(){LoadFunctionScene();}
     void onRenameFunction();
     void onHomeAllTriggered(){ResetScroll();}
     void onAddFunctionToTask();
+    void onFunctionObjectClicked();
+    void onTaskflowDropdownMenuClicked(QAction*_action);
+    void onSaveTaskflowScene();
+    void onLoadTaskflowScene();
+    void onTabChange(int _tab);
+    void onCheckforChanges();
 
 private:
     QVector<ICD> v_ICDs;
@@ -293,9 +301,11 @@ private:
     QGraphicsScene* taskflowScene;
     QVector<DrawnTaskFunctions*> taskflowDrawnFunctions;
     int taskflowVerticalSpacing;
-
-
-
+    int sceneTaskflowVerticalSizing;
+    QMenu* taskflowDropdownMenu;
+    QPushButton* taskflowSelectedButton;
+    DrawnTaskFunctions* taskflowSelectedFunctionObject;
+    QString taskTitle;
 };
 
 #endif // MAINWINDOW_H

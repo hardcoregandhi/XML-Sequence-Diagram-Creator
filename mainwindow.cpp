@@ -31,6 +31,7 @@ const int cVerticalSpacing = 30; //steps
 const int cTaskflowHorizontalMidpoint = 200;
 const int cTaskflowVerticalSpacing = 100;
 const QString cIcdLocation = "/home/jryan/simulation/dev/common/icd/";
+const QString cSTDLocation = "/home/jryan/simulation/dev/common/icd/STDs/";
 
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -66,9 +67,13 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->addPilotInteraction, SIGNAL(clicked()),
                 this, SLOT(onAddPilotInteraction()));
     connect(ui->functionsGraphicsView, SIGNAL(customContextMenuRequested(const QPoint)),this,
-              SLOT(contextMenuRequested(const QPoint&)));
+              SLOT(functionContextMenuRequested(const QPoint&)));
+    connect(ui->taskflowGraphicsView, SIGNAL(customContextMenuRequested(const QPoint)),this,
+              SLOT(taskflowContextMenuRequested(const QPoint&)));
     connect(functionDropdownMenu, SIGNAL(triggered(QAction*)),this,
               SLOT(onFunctionDropdownMenuClicked(QAction*)));
+    connect(taskflowDropdownMenu, SIGNAL(triggered(QAction*)),this,
+              SLOT(onTaskflowDropdownMenuClicked(QAction*)));
     connect(ui->actionSave_Function, SIGNAL(triggered()),this,
               SLOT(onSaveFunction()));
     connect(ui->actionLoad_Function, SIGNAL(triggered()),this,
@@ -79,6 +84,12 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onHomeAllTriggered()));
     connect(ui->addFunction, SIGNAL(clicked()),this,
               SLOT(onAddFunctionToTask()));
+    connect(ui->actionSave_As, SIGNAL(triggered()),this,
+              SLOT(onSaveTaskflowScene()));
+    connect(ui->actionOpen, SIGNAL(triggered()),this,
+              SLOT(onLoadTaskflowScene()));
+    connect(ui->tabWidget, SIGNAL(currentChanged(int)),this,
+              SLOT(onTabChange(int)));
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -110,207 +121,226 @@ void MainWindow::ParseXML()
                     it.fileName().toStdString() != "IcdModelTemplate.xml" &&
                     it.fileName().toStdString() != "IcdModelQTGExecutor.xml")
             {
+                string Rmsf;
+                string Name;
+                XMLDocument doc;
+                doc.LoadFile( filePath.c_str() );
+                XMLElement* root = doc.FirstChildElement("RmsfInterface");
+                Rmsf = root->Attribute("namespace");
+                Name = root->Attribute("name");
+                string strName(Name);
 
-            string Rmsf;
-            string Name;
-            XMLDocument doc;
-            doc.LoadFile( filePath.c_str() );
-            XMLElement* root = doc.FirstChildElement("RmsfInterface");
-            Rmsf = root->Attribute("namespace");
-            Name = root->Attribute("name");
-            string strName(Name);
+                string textNode = root->Attribute("name");
+                qDebug() << textNode.c_str();
 
-            string textNode = root->Attribute("name");
-            qDebug() << textNode.c_str();
+                ICD newICD;
 
-            ICD newICD;
-
-            for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
-            {
-                qDebug() << element->Name();
-
-                if(strcmp(element->Name(), "Subscribe") == 0)
+                for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
                 {
+                    qDebug() << element->Name();
 
-                    for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+                    if(strcmp(element->Name(), "Subscribe") == 0)
                     {
-                        string SubscribeCheckIcd = elementSubscribe->Attribute("icd");
-                        string SubscribeCheckMessage = elementSubscribe->Attribute("message");
-                        qDebug() << SubscribeCheckIcd.c_str();
-                        qDebug() << SubscribeCheckMessage.c_str();
 
-                        SubMessage* subMessage = new SubMessage(
-                                    SubscribeCheckIcd, SubscribeCheckMessage); //Smells like memory leaks.
-                        newICD.v_pSubscribedMessages.append(subMessage);
-                    }
+                        for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+                        {
+                            string SubscribeCheckIcd = elementSubscribe->Attribute("icd");
+                            string SubscribeCheckMessage = elementSubscribe->Attribute("message");
+                            qDebug() << SubscribeCheckIcd.c_str();
+                            qDebug() << SubscribeCheckMessage.c_str();
 
+                            SubMessage* subMessage = new SubMessage(
+                                        SubscribeCheckIcd, SubscribeCheckMessage); //Smells like memory leaks.
+                            newICD.v_pSubscribedMessages.append(subMessage);
+                        }
 
-                }
-
-                if(strcmp(element->Name(), "Message") == 0)
-                {
-                    string MessageCheckName = element->Attribute("name");
-                    const char* MessageCheckNetwork = element->Attribute("network");
-                    const char* MessageCheckComment = element->Attribute("comment");
-                    qDebug() << MessageCheckName.c_str();
-                    qDebug() << MessageCheckNetwork;
-                    qDebug() << MessageCheckComment;
-
-                    QVector<MessageParameter*> msgPrms;
-
-
-                    for(XMLElement* elementPublish = element->FirstChildElement(); elementPublish != NULL; elementPublish = elementPublish->NextSiblingElement())
-                    {
-                        const char* ParameterCheckName = elementPublish->Attribute("name");
-                        const char* ParameterCheckType = elementPublish->Attribute("type");
-                        const char* ParameterCheckUnit = elementPublish->Attribute("unit");
-                        const char* ParameterCheckDefault = elementPublish->Attribute("default");
-                        const char* ParameterCheckMin = elementPublish->Attribute("min");
-                        const char* ParameterCheckMax = elementPublish->Attribute("max");
-                        const char* ParameterCheckComment = elementPublish->Attribute("comment");
-                        qDebug() << ParameterCheckName;
-                        qDebug() << ParameterCheckType;
-                        qDebug() << ParameterCheckUnit;
-                        qDebug() << ParameterCheckDefault;
-                        qDebug() << ParameterCheckMin;
-                        qDebug() << ParameterCheckMax;
-                        qDebug() << ParameterCheckComment;
-
-                        if(ParameterCheckUnit == NULL)
-                            ParameterCheckUnit = "";
-                        if(ParameterCheckMin == NULL)
-                            ParameterCheckMin = "";
-                        if(ParameterCheckMax == NULL)
-                            ParameterCheckMax = "";
-                        if(ParameterCheckComment == NULL)
-                            ParameterCheckComment = "";
-                        if(ParameterCheckDefault == NULL)
-                            ParameterCheckDefault = "";
-
-
-                        MessageParameter* messageParameter = new MessageParameter(
-                                    ParameterCheckName, ParameterCheckType, ParameterCheckUnit,
-                                    ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
-                                    ParameterCheckComment, "", "", -1); //Smells like memory leaks.
-
-                        msgPrms.append(messageParameter);
 
                     }
 
-                    if(MessageCheckNetwork == NULL)
-                        MessageCheckNetwork = "";
-                    if(MessageCheckComment == NULL)
-                        MessageCheckComment = "";
-                    PubMessage* pubMessage = new PubMessage(
-                                MessageCheckName, MessageCheckNetwork, MessageCheckComment, msgPrms);
-
-                    newICD.v_pPublishedMessages.append(pubMessage);
-
-
-
-                }
-
-                if(strcmp(element->Name(), "Enum") == 0)
-                {
-
-                    for(XMLElement* elementEnum = element->FirstChildElement(); elementEnum != NULL; elementEnum = elementEnum->NextSiblingElement())
+                    if(strcmp(element->Name(), "Message") == 0)
                     {
-                        string EnumCheckName = elementEnum->Attribute("name");
-                        string EnumCheckComment = elementEnum->Attribute("comment");
-                        qDebug() << EnumCheckName.c_str();
-                        qDebug() << EnumCheckComment.c_str();
+                        string MessageCheckName = element->Attribute("name");
+                        const char* MessageCheckNetwork = element->Attribute("network");
+                        const char* MessageCheckComment = element->Attribute("comment");
+                        qDebug() << MessageCheckName.c_str();
+                        qDebug() << MessageCheckNetwork;
+                        qDebug() << MessageCheckComment;
 
-                        QVector<EnumValue*> enumValues;
+                        QVector<MessageParameter*> msgPrms;
+
 
                         for(XMLElement* elementPublish = element->FirstChildElement(); elementPublish != NULL; elementPublish = elementPublish->NextSiblingElement())
                         {
-                            string ValueCheckName = elementPublish->Attribute("name");
-                            string ValueCheckValue = elementPublish->Attribute("value");
-                            string ValueCheckComment = elementPublish->Attribute("comment");
+                            const char* ParameterCheckName = elementPublish->Attribute("name");
+                            const char* ParameterCheckType = elementPublish->Attribute("type");
+                            const char* ParameterCheckUnit = elementPublish->Attribute("unit");
+                            const char* ParameterCheckDefault = elementPublish->Attribute("default");
+                            const char* ParameterCheckMin = elementPublish->Attribute("min");
+                            const char* ParameterCheckMax = elementPublish->Attribute("max");
+                            const char* ParameterCheckComment = elementPublish->Attribute("comment");
+                            qDebug() << ParameterCheckName;
+                            qDebug() << ParameterCheckType;
+                            qDebug() << ParameterCheckUnit;
+                            qDebug() << ParameterCheckDefault;
+                            qDebug() << ParameterCheckMin;
+                            qDebug() << ParameterCheckMax;
+                            qDebug() << ParameterCheckComment;
 
-                            qDebug() << ValueCheckName.c_str();
-                            qDebug() << ValueCheckValue.c_str();
-                            qDebug() << ValueCheckComment.c_str();
+                            if(ParameterCheckUnit == NULL)
+                                ParameterCheckUnit = "";
+                            if(ParameterCheckMin == NULL)
+                                ParameterCheckMin = "";
+                            if(ParameterCheckMax == NULL)
+                                ParameterCheckMax = "";
+                            if(ParameterCheckComment == NULL)
+                                ParameterCheckComment = "";
+                            if(ParameterCheckDefault == NULL)
+                                ParameterCheckDefault = "";
 
 
-                            EnumValue* enumValue = new EnumValue(
-                                        ValueCheckName,ValueCheckValue,ValueCheckComment); //Smells like memory leaks.
+                            MessageParameter* messageParameter = new MessageParameter(
+                                        ParameterCheckName, ParameterCheckType, ParameterCheckUnit,
+                                        ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
+                                        ParameterCheckComment, "", "", -1); //Smells like memory leaks.
 
-                            enumValues.append(enumValue);
+                            msgPrms.append(messageParameter);
+
                         }
 
-                        Enum* eNum = new Enum(
-                                    EnumCheckName, EnumCheckComment, enumValues); //Smells like memory leaks.
-                        newICD.v_pEnums.append(eNum);
+                        if(MessageCheckNetwork == NULL)
+                            MessageCheckNetwork = "";
+                        if(MessageCheckComment == NULL)
+                            MessageCheckComment = "";
+                        PubMessage* pubMessage = new PubMessage(
+                                    MessageCheckName, MessageCheckNetwork, MessageCheckComment, msgPrms);
+
+                        newICD.v_pPublishedMessages.append(pubMessage);
+
+
+
                     }
 
-                }
-
-                if(strcmp(element->Name(), "Struct") == 0)
-                {
-                    string StructCheckName = element->Attribute("name");
-                    const char* StructCheckNetwork = element->Attribute("network");
-                    string StructCheckComment = element->Attribute("comment");
-                    qDebug() << StructCheckName.c_str();
-                    qDebug() << StructCheckNetwork;
-                    qDebug() << StructCheckComment.c_str();
-
-                    QVector<StructParameter*> strPrms;
-
-
-                    for(XMLElement* elementStruct = element->FirstChildElement(); elementStruct != NULL; elementStruct = elementStruct->NextSiblingElement())
+                    if(strcmp(element->Name(), "Enum") == 0)
                     {
-                        const char* ParameterCheckName = elementStruct->Attribute("name");
-                        const char* ParameterCheckType = elementStruct->Attribute("type");
-                        const char* ParameterCheckUnit = elementStruct->Attribute("unit");
-                        const char* ParameterCheckDefault = elementStruct->Attribute("default");
-                        const char* ParameterCheckMin = elementStruct->Attribute("min");
-                        const char* ParameterCheckMax = elementStruct->Attribute("max");
-                        const char* ParameterCheckComment = elementStruct->Attribute("comment");
-                        qDebug() << ParameterCheckName;
-                        qDebug() << ParameterCheckType;
-                        qDebug() << ParameterCheckUnit;
-                        qDebug() << ParameterCheckDefault;
-                        qDebug() << ParameterCheckMin;
-                        qDebug() << ParameterCheckMax;
-                        qDebug() << ParameterCheckComment;
 
-                        if(ParameterCheckUnit == 0)
-                            ParameterCheckUnit = "";
-                        if(ParameterCheckDefault == 0)
-                            ParameterCheckDefault = "";
-                        if(ParameterCheckMin == 0)
-                            ParameterCheckMin = "";
-                        if(ParameterCheckMax == 0)
-                            ParameterCheckMax = "";
-                        if(ParameterCheckComment == 0)
-                            ParameterCheckComment = "";
+                        for(XMLElement* elementEnum = element->FirstChildElement(); elementEnum != NULL; elementEnum = elementEnum->NextSiblingElement())
+                        {
+                            string EnumCheckName = elementEnum->Attribute("name");
+                            string EnumCheckComment = elementEnum->Attribute("comment");
+                            qDebug() << EnumCheckName.c_str();
+                            qDebug() << EnumCheckComment.c_str();
 
-                        StructParameter* structParameter = new StructParameter(
-                                    ParameterCheckName,ParameterCheckType,ParameterCheckUnit,
-                                    ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
-                                    ParameterCheckComment, "", ""); //Smells like memory leaks.
+                            QVector<EnumValue*> enumValues;
 
-                        strPrms.append(structParameter);
+                            for(XMLElement* elementPublish = element->FirstChildElement(); elementPublish != NULL; elementPublish = elementPublish->NextSiblingElement())
+                            {
+                                string ValueCheckName = elementPublish->Attribute("name");
+                                string ValueCheckValue = elementPublish->Attribute("value");
+                                string ValueCheckComment = elementPublish->Attribute("comment");
+
+                                qDebug() << ValueCheckName.c_str();
+                                qDebug() << ValueCheckValue.c_str();
+                                qDebug() << ValueCheckComment.c_str();
+
+
+                                EnumValue* enumValue = new EnumValue(
+                                            ValueCheckName,ValueCheckValue,ValueCheckComment); //Smells like memory leaks.
+
+                                enumValues.append(enumValue);
+                            }
+
+                            Enum* eNum = new Enum(
+                                        EnumCheckName, EnumCheckComment, enumValues); //Smells like memory leaks.
+                            newICD.v_pEnums.append(eNum);
+                        }
+
                     }
 
-                    if(StructCheckNetwork == NULL)
-                        StructCheckNetwork = "";
+                    if(strcmp(element->Name(), "Struct") == 0)
+                    {
+                        string StructCheckName = element->Attribute("name");
+                        const char* StructCheckNetwork = element->Attribute("network");
+                        string StructCheckComment = element->Attribute("comment");
+                        qDebug() << StructCheckName.c_str();
+                        qDebug() << StructCheckNetwork;
+                        qDebug() << StructCheckComment.c_str();
 
-                    Struct* str = new Struct(
-                                StructCheckName, StructCheckNetwork, StructCheckComment, strPrms);
+                        QVector<StructParameter*> strPrms;
 
-                    newICD.v_pStructs.append(str);
+
+                        for(XMLElement* elementStruct = element->FirstChildElement(); elementStruct != NULL; elementStruct = elementStruct->NextSiblingElement())
+                        {
+                            const char* ParameterCheckName = elementStruct->Attribute("name");
+                            const char* ParameterCheckType = elementStruct->Attribute("type");
+                            const char* ParameterCheckUnit = elementStruct->Attribute("unit");
+                            const char* ParameterCheckDefault = elementStruct->Attribute("default");
+                            const char* ParameterCheckMin = elementStruct->Attribute("min");
+                            const char* ParameterCheckMax = elementStruct->Attribute("max");
+                            const char* ParameterCheckComment = elementStruct->Attribute("comment");
+                            qDebug() << ParameterCheckName;
+                            qDebug() << ParameterCheckType;
+                            qDebug() << ParameterCheckUnit;
+                            qDebug() << ParameterCheckDefault;
+                            qDebug() << ParameterCheckMin;
+                            qDebug() << ParameterCheckMax;
+                            qDebug() << ParameterCheckComment;
+
+                            if(ParameterCheckUnit == 0)
+                                ParameterCheckUnit = "";
+                            if(ParameterCheckDefault == 0)
+                                ParameterCheckDefault = "";
+                            if(ParameterCheckMin == 0)
+                                ParameterCheckMin = "";
+                            if(ParameterCheckMax == 0)
+                                ParameterCheckMax = "";
+                            if(ParameterCheckComment == 0)
+                                ParameterCheckComment = "";
+
+                            StructParameter* structParameter = new StructParameter(
+                                        ParameterCheckName,ParameterCheckType,ParameterCheckUnit,
+                                        ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
+                                        ParameterCheckComment, "", ""); //Smells like memory leaks.
+
+                            strPrms.append(structParameter);
+                        }
+
+                        if(StructCheckNetwork == NULL)
+                            StructCheckNetwork = "";
+
+                        Struct* str = new Struct(
+                                    StructCheckName, StructCheckNetwork, StructCheckComment, strPrms);
+
+                        newICD.v_pStructs.append(str);
+                    }
                 }
-            }
 
-            newICD.name = strName;
-            QString parsedName = strName.c_str();
-            parsedName.remove("Icd", Qt::CaseSensitive);
-            parsedName.remove("Model", Qt::CaseSensitive); //ERROR SHOULD BE DYNAMIC
-            newICD.parsedName = parsedName.toStdString();
+                newICD.name = strName;
+                QString parsedName = strName.c_str();
+                parsedName.remove("Icd", Qt::CaseSensitive);
+                parsedName.remove("Model", Qt::CaseSensitive); //ERROR SHOULD BE DYNAMIC
+                newICD.parsedName = parsedName.toStdString();
 
-            v_ICDs.append(newICD);
+                v_ICDs.append(newICD);
+
+
+                //This takes the existing file and saves it into
+                QFile file(filePath.c_str());
+                QString STDsFolder = "/home/jryan/simulation/dev/common/icd/STDs/";
+                if(!QDir(STDsFolder + QString::fromStdString(strName)).exists())
+                {
+                    QMessageBox::critical(this, QString::fromStdString(strName) +" is new",
+                                                        "An ICD that has not been scanned before has been detected, and the folder directory will now be created",
+                                                        QMessageBox::Ok);
+
+                    QDir dir(STDsFolder + QString::fromStdString(strName));
+                    if (!dir.exists()) {
+                        dir.mkpath(".");
+                        dir.mkpath("Functions");
+                        dir.mkpath("Tasks");
+                    }
+                }
+                qDebug()<<file.copy(STDsFolder + QString::fromStdString(strName) + "/" +
+                                    QString::fromStdString(strName) + ".xml");
         }
     }
 }
@@ -352,6 +382,8 @@ void MainWindow::SetupFunctionBrowser()
         temp.remove(".xml");
         ui->taskFunctionList->addItem(temp);
     }
+
+    ui->taskFunctionList->sortItems(Qt::AscendingOrder);
 }
 
 void MainWindow::SetupTaskflowScene()
@@ -360,7 +392,7 @@ void MainWindow::SetupTaskflowScene()
     startObject->name = "startObject";
     startObject->dir = "";
     taskflowDrawnFunctions.append(startObject);
-    QRectF startCircle = QRectF(cTaskflowHorizontalMidpoint-25, taskflowVerticalSpacing, 50, 50);
+    QRectF startCircle = QRectF(cTaskflowHorizontalMidpoint+75, taskflowVerticalSpacing, 50, 50);
 
     taskflowVerticalSpacing += cTaskflowVerticalSpacing;
 
@@ -370,13 +402,15 @@ void MainWindow::SetupTaskflowScene()
     endObject->name = "endObject";
     endObject->dir = "";
     taskflowDrawnFunctions.append(endObject);
-    QRectF endCircle = QRectF(cTaskflowHorizontalMidpoint-25, taskflowVerticalSpacing, 50, 50);
+    QRectF endCircle = QRectF(cTaskflowHorizontalMidpoint+75, taskflowVerticalSpacing, 50, 50);
 
     taskflowVerticalSpacing += cTaskflowVerticalSpacing;
 
     taskflowScene->addEllipse(endCircle, QPen(Qt::black, 10), QBrush(Qt::black, Qt::NoBrush));
 
     ui->taskflowGraphicsView->update();
+
+    RedrawTaskflowScene();
 }
 
 void MainWindow::SetupContextMenu()
@@ -390,6 +424,20 @@ void MainWindow::SetupContextMenu()
     functionDropdownMenu->setObjectName("functionDropdownMenu");
 
     foreach(QAction* action, functionDropdownMenu->actions())
+    {
+        action->setEnabled(false);
+    }
+
+    taskflowDropdownMenu = new QMenu();
+    QList<QAction*> v_pTaskflowDropdownMenuActions;
+    v_pTaskflowDropdownMenuActions.append(new QAction("Move Up", this));
+    v_pTaskflowDropdownMenuActions.append(new QAction("Move Down", this));
+    v_pTaskflowDropdownMenuActions.append(new QAction("Delete", this));
+    v_pTaskflowDropdownMenuActions.append(new QAction("View Function", this));
+    taskflowDropdownMenu->addActions(v_pTaskflowDropdownMenuActions);
+    taskflowDropdownMenu->setObjectName("taskflowDropdownMenu");
+
+    foreach(QAction* action, taskflowDropdownMenu->actions())
     {
         action->setEnabled(false);
     }
@@ -637,6 +685,7 @@ void MainWindow::SetupDrawingArea()
     sceneFunctionHorizontalSizing = 2500;
     sceneFunctionVerticalSizing = 2500;
     taskflowVerticalSpacing = 100;
+    sceneTaskflowVerticalSizing = 1000;
 
     if(icdScene)
     {
@@ -760,6 +809,9 @@ void MainWindow::SetupDrawingArea()
         taskflowScene->setSceneRect(0,0,600,700);
         ui->taskflowGraphicsView->setScene(taskflowScene);
         ui->taskflowGraphicsView->setBackgroundBrush(Qt::white);
+
+        taskflowSelectedButton = NULL;
+        taskflowSelectedFunctionObject = NULL;
     }
 
 }
@@ -770,6 +822,7 @@ void MainWindow::SaveAllSequenceDiagrams()
     {
         string fileName = v_ICDs[i].name.c_str();
         fileName += ".xml";
+        fileName.insert(0,cSTDLocation.toStdString());
         XMLDocument diagram;
         diagram.SaveFile(fileName.c_str()); // Creates the file.
         FILE* pFile;
@@ -911,6 +964,25 @@ QPolygonF MainWindow::CreateArrowHead(QLineF arrowLine, bool rightPointing)
     return arrowPoly;
 }
 
+QPolygonF MainWindow::CreateTaskArrowHead(QLineF arrowLine)
+{
+    QPointF arrowPoint;
+    QPointF arrowRight;
+    QPointF arrowLeft;
+
+    arrowPoint = QPointF(arrowLine.p2());
+    arrowRight = QPointF(arrowPoint.x()+5,arrowPoint.y()-10);
+    arrowLeft = QPointF(arrowPoint.x()-5,arrowPoint.y()-10);
+
+    QVector<QPointF> arrowHeadVector;
+    arrowHeadVector.append(arrowPoint);
+    arrowHeadVector.append(arrowRight);
+    arrowHeadVector.append(arrowLeft);
+    QPolygonF arrowPoly = QPolygonF(arrowHeadVector);
+
+    return arrowPoly;
+}
+
 void MainWindow::CheckFunctionSceneResize()
 {
     if(functionHorizontalSpacing > sceneFunctionHorizontalSizing)
@@ -939,6 +1011,15 @@ void MainWindow::CheckUnsortedSceneResize()
     icdScene->setSceneRect(0,0,sceneUnsortedHorizontalSizing,sceneUnsortedVerticalSizing);
 }
 
+void MainWindow::CheckTaskflowSceneResize()
+{
+    if(taskflowVerticalSpacing + 300 > sceneTaskflowVerticalSizing)
+    {
+        sceneTaskflowVerticalSizing += 600;
+    }
+    taskflowScene->setSceneRect(0,0,600,sceneTaskflowVerticalSizing);
+}
+
 void MainWindow::RedrawFunctionScene()
 {
     pilotModelObject = functionDrawnModels[0];
@@ -956,7 +1037,7 @@ void MainWindow::RedrawFunctionScene()
     ui->functionsGraphicsView->setBackgroundBrush(Qt::white);
 
     //Diagram Title
-    const char* strDiagramTitle = functionTitle.toStdString().c_str();
+//    const char* strDiagramTitle = functionTitle.toStdString().c_str();
 
     QLabel *DiagramTitle = new QLabel(tr(functionTitle.toStdString().c_str()));
     DiagramTitle->setAlignment(Qt::AlignHCenter);
@@ -1048,7 +1129,8 @@ void MainWindow::SaveFunctionScene()
     XMLPrinter printer(pFile);
 
     printer.PushComment(selectedICD.name.c_str());
-    printer.OpenElement(functionTitle.toStdString().c_str());
+    printer.OpenElement("FunctionTitle");
+    printer.PushAttribute("name", functionTitle.toStdString().c_str());
 
     printer.OpenElement("Models");
     foreach (DrawnModelObject* dmo, functionDrawnModels) {
@@ -1075,6 +1157,7 @@ void MainWindow::SaveFunctionScene()
     fclose(pFile);
 
     ui->statusBar->showMessage("Saving Complete");
+    SetupFunctionBrowser();
 }
 
 void MainWindow::LoadFunctionScene()
@@ -1083,6 +1166,8 @@ void MainWindow::LoadFunctionScene()
     functionDrawnModels.clear();
     functionDrawnData.clear();
     functionTitle.clear();
+    functionSelectedButton = NULL;
+    functionSelectedDataObject = NULL;
 
     QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
                                                     "/home/jryan/simulation/dev/common/icd/STDs/"+ QString::fromStdString(selectedICD.name) +"/Functions/",
@@ -1142,6 +1227,7 @@ void MainWindow::LoadFunctionScene()
 
     ui->statusBar->showMessage("Loading Complete");
     RedrawFunctionScene();
+    onHomeTriggered();
 }
 
 void MainWindow::closeEvent(QCloseEvent *event)
@@ -1768,21 +1854,41 @@ void MainWindow::onDataObjectClicked()
     }
 }
 
-void MainWindow::contextMenuRequested(const QPoint& point)
+void MainWindow::functionContextMenuRequested(const QPoint& point)
 {
     functionDropdownMenu->popup(mapToGlobal(point));
 }
 
+void MainWindow::taskflowContextMenuRequested(const QPoint& point)
+{
+    taskflowDropdownMenu->popup(mapToGlobal(point));
+}
+
 void MainWindow::onRenameFunction()
 {
-    bool ok;
-    QString text = QInputDialog::getText(this, tr("Rename Function"),
-                                         tr("New Function Name:"), QLineEdit::Normal,
-                                         QDir::home().dirName(), &ok);
-    if (ok && !text.isEmpty())
+    if(ui->tabWidget->currentIndex() == 1)
     {
-        functionTitle = text;
-        RedrawFunctionScene();
+        bool ok;
+        QString text = QInputDialog::getText(this, tr("Rename Function"),
+                                             tr("New Function Name:"), QLineEdit::Normal,
+                                             QDir::home().dirName(), &ok);
+        if (ok && !text.isEmpty())
+        {
+            functionTitle = text;
+            RedrawFunctionScene();
+        }
+    }
+    else if(ui->tabWidget->currentIndex() == 2)
+    {
+        bool ok;
+        QString text = QInputDialog::getText(this, tr("Rename Task"),
+                                             tr("New Task Name:"), QLineEdit::Normal,
+                                             QDir::home().dirName(), &ok);
+        if (ok && !text.isEmpty())
+        {
+            taskTitle = text;
+            RedrawTaskflowScene();
+        }
     }
 }
 
@@ -1851,25 +1957,89 @@ void MainWindow::onAddFunctionToTask()
 
 }
 
+void MainWindow::onFunctionObjectClicked() //derived from onDataObjectClicked
+{
+    // Deselect
+    if (taskflowSelectedButton == (QPushButton*)sender())
+    {
+        taskflowSelectedButton->setStyleSheet("border: none; background-color: transparent");
+        taskflowSelectedButton = NULL;
+        functionSelectedDataObject = NULL;
+
+        foreach(QAction* action, taskflowDropdownMenu->actions())
+        {
+            action->setEnabled(false);
+        }
+
+        return;
+    }
+
+    //Else deal with the old button before setting the new one
+    if (taskflowSelectedButton != NULL)
+        taskflowSelectedButton->setStyleSheet("border: none; background-color: transparent");
+
+    taskflowSelectedButton = (QPushButton*)sender();
+
+    // Set the selection as #selected and find its dataObject
+    taskflowSelectedButton->setStyleSheet("border: 2px solid #8f8f91");
+
+    foreach(DrawnTaskFunctions* dtf, taskflowDrawnFunctions)
+    {
+        if(taskflowSelectedButton == dtf->label)
+        {
+            taskflowSelectedFunctionObject = dtf;
+
+            foreach(QAction* action, taskflowDropdownMenu->actions())
+            {
+                action->setEnabled(true);
+            }
+            break;
+        }
+    }
+
+    if (taskflowSelectedFunctionObject==NULL)
+    {
+        taskflowSelectedButton->setStyleSheet("border: none; background-color: transparent");
+        taskflowSelectedButton = NULL;
+        taskflowSelectedFunctionObject = NULL;
+
+        qDebug() << "Not Found";
+    }}
+
 void MainWindow::RedrawTaskflowScene()
 {
     taskflowVerticalSpacing = 100;
 
     taskflowScene->clear();
+    ui->taskflowGraphicsView->update();
+
+    if(taskTitle != NULL)
+    {
+        QLabel *DiagramTitle = new QLabel(tr(taskTitle.toStdString().c_str()));
+        DiagramTitle->setAlignment(Qt::AlignHCenter);
+        DiagramTitle->move(10,10);
+        QFont f( "Arial", 20, QFont::Bold);
+        f.setUnderline(true);
+        DiagramTitle->setFont(f);
+        taskflowScene->addWidget(DiagramTitle);
+    }
 
     QLineF line;
     QRectF newTaskRect;
-    QPushButton *newTaskFunctionName = newTaskFunctionName;
+    QPushButton *newTaskFunctionName;
     QPolygonF arrowHead;
 
     foreach (DrawnTaskFunctions* dtf, taskflowDrawnFunctions) {
+
+        CheckTaskflowSceneResize();
+
         if(dtf->name==("startObject"))
         {
-            QRectF newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,50,50);
+            newTaskRect = QRect(cTaskflowHorizontalMidpoint+75, taskflowVerticalSpacing,50,50);
             QPointF midPoint = QLineF(newTaskRect.bottomLeft(),newTaskRect.bottomRight()).pointAt(0.5);
-            QLineF line = QLineF(midPoint, midPoint);
+            line = QLineF(midPoint, midPoint);
             line.setP2(QPointF(midPoint.x(),midPoint.y()+50));
-            QPolygonF arrowHead = CreateArrowHead(line,true);
+            arrowHead = CreateTaskArrowHead(line);
             taskflowScene->addEllipse(newTaskRect, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
             taskflowScene->addLine(line, QPen(Qt::black));
             taskflowScene->addPolygon(arrowHead);
@@ -1879,24 +2049,29 @@ void MainWindow::RedrawTaskflowScene()
         }
         else if(dtf->name==("endObject"))
         {
-            QRectF newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,50,50);
-            taskflowScene->addEllipse(newTaskRect, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
+            newTaskRect = QRect(cTaskflowHorizontalMidpoint+75, taskflowVerticalSpacing+7,50,50);
+            taskflowScene->addEllipse(newTaskRect, QPen(Qt::black, 10), QBrush(Qt::black, Qt::NoBrush));
         }
         else
         {
-            QRectF newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,200,50);
+            newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,200,50);
             QPointF midPoint = QLineF(newTaskRect.bottomLeft(),newTaskRect.bottomRight()).pointAt(0.5);
-            QLineF line = QLineF(midPoint, midPoint);
+            line = QLineF(midPoint, midPoint);
             line.setP2(QPointF(midPoint.x(),midPoint.y()+50));
 
-            QPushButton *newTaskFunctionName = new QPushButton(dtf->name);
+            newTaskFunctionName = new QPushButton(dtf->name);
             newTaskFunctionName->setText(dtf->name);
             newTaskFunctionName->setFlat(true);
+            newTaskFunctionName->setStyleSheet("text-align: left; padding: 0px;");
+            newTaskFunctionName->setFocusPolicy(Qt::NoFocus);
             int width = newTaskFunctionName->fontMetrics().boundingRect(newTaskFunctionName->text()).width();
             newTaskFunctionName->move(midPoint.x() - width/2, midPoint.y()-30);
             taskflowScene->addWidget(newTaskFunctionName);
 
-            QPolygonF arrowHead = CreateArrowHead(line,true);
+            connect(newTaskFunctionName, SIGNAL(clicked()),
+                        this, SLOT(onFunctionObjectClicked()));
+
+            arrowHead = CreateTaskArrowHead(line);
             taskflowScene->addPolygon(arrowHead);
             taskflowScene->addLine(line, QPen(Qt::black));
             taskflowScene->addRect(newTaskRect, QPen(Qt::black), QBrush(Qt::black, Qt::NoBrush));
@@ -1906,10 +2081,124 @@ void MainWindow::RedrawTaskflowScene()
             dtf->line = line;
         }
 
-
         taskflowVerticalSpacing += 100;
 
     }
+}
+
+void MainWindow::onSaveTaskflowScene()
+{
+    if(taskTitle==NULL) //Catch for not naming the Task
+        onRenameFunction();
+
+    QString saveDirectory = "/home/jryan/simulation/dev/common/icd/STDs/" + QString::fromStdString(selectedICD.name) +"/Tasks/";
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save Directory"),
+                                                    saveDirectory+taskTitle,
+                                                    tr("XML files (*.xml)"));
+
+    fileName.remove(".xml");
+    fileName += ".xml";
+    QString fullDir = fileName;
+    fileName.remove(saveDirectory);
+
+    XMLDocument diagram;
+    diagram.SaveFile(fullDir.toStdString().c_str());// Creates the file.
+    FILE* pFile;
+    pFile = fopen(fullDir.toStdString().c_str(), "w");
+    if (pFile == NULL)
+        qDebug() << "error opening file";
+
+    XMLPrinter printer(pFile);
+
+    printer.PushComment(selectedICD.name.c_str());
+    printer.OpenElement("TaskTitle");
+    printer.PushAttribute("name", taskTitle.toStdString().c_str());
+
+    printer.OpenElement("Functions");
+    foreach (DrawnTaskFunctions* dtf, taskflowDrawnFunctions) {
+        printer.OpenElement("Function");
+        printer.PushAttribute("name", dtf->name.toStdString().c_str());
+        printer.PushAttribute("dir", dtf->dir.toStdString().c_str());
+        printer.CloseElement();
+    }
+    printer.CloseElement();
+
+    printer.CloseElement();
+
+    diagram.Print(&printer);
+    fclose(pFile);
+
+    ui->statusBar->showMessage("Saving Complete");
+}
+
+void MainWindow::onLoadTaskflowScene()
+{
+    //Clear everything out
+    taskflowDrawnFunctions.clear();
+    taskTitle.clear();
+    taskflowSelectedButton = NULL;
+    taskflowSelectedFunctionObject = NULL;
+
+    QString fileName = QFileDialog::getOpenFileName(this, tr("Open File"),
+                                                    "/home/jryan/simulation/dev/common/icd/STDs/"+ QString::fromStdString(selectedICD.name) +"/Tasks/",
+                                                    tr("XML files (*.xml)"));
+    //Cancel Catch
+    if(fileName == NULL)
+    {
+        ui->statusBar->showMessage("ERROR: Load Cancelled");
+        return;
+    }
+
+    XMLDocument doc;
+    doc.LoadFile( fileName.toStdString().c_str() );
+    XMLElement* root = doc.FirstChildElement();
+    taskTitle = root->Attribute("name");
+
+    for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
+    {
+        if(strcmp(element->Name(), "Functions") == 0)
+        {
+            for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+            {
+                DrawnTaskFunctions* dtf = new DrawnTaskFunctions();
+                QString dmoName = elementSubscribe->Attribute("name");
+                QString dmoParsedName = elementSubscribe->Attribute("dir");
+
+                dtf->name = dmoName;
+                dtf->dir = dmoParsedName;
+
+                taskflowDrawnFunctions.append(dtf);
+            }
+        }
+    }
+
+    ui->statusBar->showMessage("Loading Complete");
+    RedrawTaskflowScene();
+    onHomeTriggered();
+}
+
+void MainWindow::onTabChange(int _tab)
+{
+    if(_tab == 0)
+    {
+        ui->menuTasks->setEnabled(false);
+        ui->menuFunctions->setEnabled(false);
+    }
+    else if(_tab == 1)
+    {
+        ui->menuTasks->setEnabled(false);
+        ui->menuFunctions->setEnabled(true);
+    }
+    else if(_tab == 2)
+    {
+        ui->menuTasks->setEnabled(true);
+        ui->menuFunctions->setEnabled(false);
+    }
+}
+
+void MainWindow::onCheckforChanges()
+{
+
 }
 
 void MainWindow::onFunctionDropdownMenuClicked(QAction * _action)
@@ -1966,4 +2255,110 @@ void MainWindow::onFunctionDropdownMenuClicked(QAction * _action)
     functionSelectedButton = NULL;
     functionSelectedDataObject = NULL;
     RedrawFunctionScene();
+}
+
+void MainWindow::onTaskflowDropdownMenuClicked(QAction * _action)
+{
+    if(taskflowSelectedButton == NULL)
+        return;
+
+    if(_action->text()=="Delete")
+    {
+        taskflowDrawnFunctions.remove(taskflowDrawnFunctions.indexOf(taskflowSelectedFunctionObject));
+        taskflowVerticalSpacing -= cVerticalSpacing;
+
+
+        foreach(QAction* action, taskflowDropdownMenu->actions())
+        {
+            action->setEnabled(false);
+        }
+    }
+    else if(_action->text()=="Move Up")
+    {
+        int tempLocation = taskflowDrawnFunctions.indexOf(taskflowSelectedFunctionObject);
+        if(tempLocation == 0)
+            ui->statusBar->showMessage("ERROR: Can't move any further up");
+        else
+        {
+            DrawnTaskFunctions* tempObject = taskflowDrawnFunctions.at(tempLocation);
+            taskflowDrawnFunctions.replace(tempLocation, taskflowDrawnFunctions.at(tempLocation-1));
+            taskflowDrawnFunctions.replace(tempLocation-1, tempObject);
+        }
+    }
+    else if(_action->text()=="Move Down")
+    {
+        int tempLocation = taskflowDrawnFunctions.indexOf(taskflowSelectedFunctionObject);
+        if(taskflowDrawnFunctions.size() == tempLocation+1)
+            ui->statusBar->showMessage("ERROR: Can't move any further down");
+        else
+        {
+            DrawnTaskFunctions* tempObject = taskflowDrawnFunctions.at(tempLocation);
+            taskflowDrawnFunctions.replace(tempLocation, taskflowDrawnFunctions.at(tempLocation+1));
+            taskflowDrawnFunctions.replace(tempLocation+1, tempObject);
+        }
+    }
+    else if(_action->text()=="View Function")
+    {
+        //LOTS OF DUPLICATED CODE
+        functionDrawnModels.clear();
+        functionDrawnData.clear();
+        functionTitle.clear();
+        functionSelectedButton = NULL;
+        functionSelectedDataObject = NULL;
+
+        QString fileName = taskflowSelectedFunctionObject->dir;
+        XMLDocument doc;
+        doc.LoadFile( fileName.toStdString().c_str() );
+        XMLElement* root = doc.FirstChildElement();
+        functionTitle = root->Attribute("name");
+
+        for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
+        {
+            if(strcmp(element->Name(), "Models") == 0)
+            {
+                for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+                {
+                    DrawnModelObject* dmo = new DrawnModelObject();
+                    string dmoName = elementSubscribe->Attribute("name");
+                    string dmoParsedName = elementSubscribe->Attribute("parsedName");
+
+                    dmo->name = dmoName;
+                    dmo->parsedName= dmoParsedName;
+
+                    functionDrawnModels.append(dmo);
+                }
+            }
+
+            if(strcmp(element->Name(), "Data") == 0)
+            {
+
+                for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+                {
+                    DrawnDataObject* ddo = new DrawnDataObject();
+                    string ddoName = elementSubscribe->Attribute("name");
+                    string ddoModel = elementSubscribe->Attribute("model");
+                    string ddoPubOrSub = elementSubscribe->Attribute("pubOrSub");
+
+                    ddo->name = ddoName;
+                    foreach (DrawnModelObject* dmo, functionDrawnModels) {
+                        if(ddoModel == dmo->name)
+                            ddo->model = dmo;
+                    }
+
+                    ddo->pubOrSub = ddoPubOrSub;
+
+                    functionDrawnData.append(ddo);
+                }
+            }
+
+        }
+
+        ui->statusBar->showMessage("Loading Complete");
+        RedrawFunctionScene();
+        ui->tabWidget->setCurrentIndex(1);
+        onHomeTriggered();
+    }
+    taskflowSelectedButton = NULL;
+    taskflowSelectedFunctionObject = NULL;
+    RedrawTaskflowScene();
 }

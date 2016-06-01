@@ -27,7 +27,7 @@
     <item row="0" column="1">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="tab">
        <attribute name="title">
@@ -198,7 +198,7 @@
           <item row="0" column="0">
            <widget class="QListWidget" name="taskFunctionList">
             <property name="sizePolicy">
-             <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
               <horstretch>0</horstretch>
               <verstretch>0</verstretch>
              </sizepolicy>
@@ -246,7 +246,7 @@
           <bool>true</bool>
          </property>
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
@@ -258,7 +258,7 @@
           </size>
          </property>
          <property name="contextMenuPolicy">
-          <enum>Qt::DefaultContextMenu</enum>
+          <enum>Qt::CustomContextMenu</enum>
          </property>
          <property name="interactive">
           <bool>true</bool>
@@ -282,7 +282,10 @@
      <height>25</height>
     </rect>
    </property>
-   <widget class="QMenu" name="menuXML_Parser">
+   <widget class="QMenu" name="menuFunctions">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Function</string>
     </property>
@@ -305,6 +308,9 @@
     <addaction name="actionHome_All"/>
    </widget>
    <widget class="QMenu" name="menuTasks">
+    <property name="enabled">
+     <bool>false</bool>
+    </property>
     <property name="title">
      <string>Tasks</string>
     </property>
@@ -312,25 +318,15 @@
     <addaction name="actionOpen"/>
     <addaction name="actionSave_As"/>
    </widget>
-   <addaction name="menuXML_Parser"/>
+   <addaction name="menuFunctions"/>
    <addaction name="menuTasks"/>
    <addaction name="menuReload"/>
    <addaction name="menuDiagram"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
-  <action name="actionSave_Model">
-   <property name="text">
-    <string>Save Model</string>
-   </property>
-  </action>
   <action name="actionSave_Function">
    <property name="text">
     <string>Save Function</string>
-   </property>
-  </action>
-  <action name="actionLoad_Model">
-   <property name="text">
-    <string>Load Model</string>
    </property>
   </action>
   <action name="actionLoad_Function">
