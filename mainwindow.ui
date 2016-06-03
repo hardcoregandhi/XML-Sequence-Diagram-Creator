@@ -76,6 +76,9 @@
           <property name="contextMenuPolicy">
            <enum>Qt::DefaultContextMenu</enum>
           </property>
+          <property name="sizeAdjustPolicy">
+           <enum>QAbstractScrollArea::AdjustToContents</enum>
+          </property>
           <property name="interactive">
            <bool>true</bool>
           </property>
@@ -292,12 +295,13 @@
     <addaction name="actionSave_Function"/>
     <addaction name="actionLoad_Function"/>
    </widget>
-   <widget class="QMenu" name="menuReload">
+   <widget class="QMenu" name="menuXMLs">
     <property name="title">
-     <string>Reload...</string>
+     <string>XMLs</string>
     </property>
-    <addaction name="actionReload_XMLs"/>
-    <addaction name="actionCheck_For_Changes"/>
+    <addaction name="actionReload_Stock_XMLs"/>
+    <addaction name="actionReload_STD_XMLs"/>
+    <addaction name="actionSave_XML_Changes"/>
    </widget>
    <widget class="QMenu" name="menuDiagram">
     <property name="title">
@@ -306,6 +310,7 @@
     <addaction name="actionHome"/>
     <addaction name="actionRename"/>
     <addaction name="actionHome_All"/>
+    <addaction name="actionSave_to_JPG"/>
    </widget>
    <widget class="QMenu" name="menuTasks">
     <property name="enabled">
@@ -320,7 +325,7 @@
    </widget>
    <addaction name="menuFunctions"/>
    <addaction name="menuTasks"/>
-   <addaction name="menuReload"/>
+   <addaction name="menuXMLs"/>
    <addaction name="menuDiagram"/>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
@@ -334,14 +339,14 @@
     <string>Load Function</string>
    </property>
   </action>
-  <action name="actionReload_XMLs">
+  <action name="actionReload_Stock_XMLs">
    <property name="text">
-    <string>Reload XMLs</string>
+    <string>Reload Stock XMLs</string>
    </property>
   </action>
-  <action name="actionCheck_For_Changes">
+  <action name="actionReload_STD_XMLs">
    <property name="text">
-    <string>Check For Changes</string>
+    <string>Reload STD XMLs</string>
    </property>
   </action>
   <action name="actionHome">
@@ -378,6 +383,16 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+H</string>
+   </property>
+  </action>
+  <action name="actionSave_XML_Changes">
+   <property name="text">
+    <string>Save XML Changes</string>
+   </property>
+  </action>
+  <action name="actionSave_to_JPG">
+   <property name="text">
+    <string>Save to JPG</string>
    </property>
   </action>
  </widget>

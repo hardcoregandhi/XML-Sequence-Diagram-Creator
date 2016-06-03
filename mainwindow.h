@@ -215,7 +215,12 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-    void ParseXML();
+
+    void ParseStockIcds();
+    void ParseStdIcds();
+    void SaveAllSequenceDiagrams();
+
+    void SetupFileDirectories();
     void SetupIcdMenu();
     void SetupDrawingArea();
     void SetupMessageBrowser();
@@ -223,9 +228,6 @@ public:
     void SetupTaskflowScene();
     void SetupContextMenu();
     void ResetScroll();
-
-    void SaveAllSequenceDiagrams();
-    void SetupFileDirectories();
 
     void DrawUnsortedDiagram(ICD _icd);
     QPolygonF CreateArrowHead(QLineF arrowLine, bool rightPointing);
@@ -254,10 +256,7 @@ public slots:
     void onDataObjectClicked();
     void functionContextMenuRequested(const QPoint& point);
     void taskflowContextMenuRequested(const QPoint& point);
-    void onSaveFunction(){SaveFunctionScene();}
-    void onLoadFunction(){LoadFunctionScene();}
     void onRenameFunction();
-    void onHomeAllTriggered(){ResetScroll();}
     void onAddFunctionToTask();
     void onFunctionObjectClicked();
     void onTaskflowDropdownMenuClicked(QAction*_action);
@@ -265,6 +264,17 @@ public slots:
     void onLoadTaskflowScene();
     void onTabChange(int _tab);
     void onCheckforChanges();
+    void onHomeAllTriggered()   { ResetScroll();                }
+    void onSaveFunction()       { SaveFunctionScene();          }
+    void onLoadFunction()       { LoadFunctionScene();          }
+    void onParseStdXmls()       { ParseStdIcds();               }
+    void onParseStockXmls()     { ParseStockIcds();
+                                  SetupMessageBrowser();
+                                  SetupIcdMenu();               }
+    void onSaveXmlChanges()     { SaveAllSequenceDiagrams();    }
+
+    void onSaveToJPG();
+
 
 private:
     QVector<ICD> v_ICDs;

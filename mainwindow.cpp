@@ -46,7 +46,7 @@ MainWindow::MainWindow(QWidget *parent) :
     taskflowScene = new QGraphicsScene();
     icdBrowser = ui->messageBrowser;
 
-    ParseXML();
+    ParseStockIcds();
     SetupFileDirectories();
     SetupMessageBrowser();
     SetupIcdMenu();
@@ -90,6 +90,14 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onLoadTaskflowScene()));
     connect(ui->tabWidget, SIGNAL(currentChanged(int)),this,
               SLOT(onTabChange(int)));
+    connect(ui->actionReload_STD_XMLs, SIGNAL(triggered()),this,
+              SLOT(onParseStdXmls()));
+    connect(ui->actionReload_Stock_XMLs, SIGNAL(triggered()),this,
+              SLOT(onParseStockXmls()));
+    connect(ui->actionSave_XML_Changes, SIGNAL(triggered()),this,
+              SLOT(onSaveXmlChanges()));
+    connect(ui->actionSave_to_JPG, SIGNAL(triggered()),this,
+              SLOT(onSaveToJPG()));
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -99,8 +107,11 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::ParseXML()
+void MainWindow::ParseStockIcds()
 {
+    bool yesToAll;
+    v_ICDs.clear();
+
     QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
                                                     "/home/jryan/simulation/dev/common/icd/",
                                                     QFileDialog::ShowDirsOnly
@@ -126,6 +137,263 @@ void MainWindow::ParseXML()
                 XMLDocument doc;
                 doc.LoadFile( filePath.c_str() );
                 XMLElement* root = doc.FirstChildElement("RmsfInterface");
+                Rmsf = root->Attribute("namespace");
+                Name = root->Attribute("name");
+                string strName(Name);
+
+                string textNode = root->Attribute("name");
+                qDebug() << textNode.c_str();
+
+                ICD newICD;
+
+                for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
+                {
+                    qDebug() << element->Name();
+
+                    if(strcmp(element->Name(), "Subscribe") == 0)
+                    {
+
+                        for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+                        {
+                            string SubscribeCheckIcd = elementSubscribe->Attribute("icd");
+                            string SubscribeCheckMessage = elementSubscribe->Attribute("message");
+                            qDebug() << SubscribeCheckIcd.c_str();
+                            qDebug() << SubscribeCheckMessage.c_str();
+
+                            SubMessage* subMessage = new SubMessage(
+                                        SubscribeCheckIcd, SubscribeCheckMessage); //Smells like memory leaks.
+                            newICD.v_pSubscribedMessages.append(subMessage);
+                        }
+
+
+                    }
+
+                    if(strcmp(element->Name(), "Message") == 0)
+                    {
+                        string MessageCheckName = element->Attribute("name");
+                        const char* MessageCheckNetwork = element->Attribute("network");
+                        const char* MessageCheckComment = element->Attribute("comment");
+                        qDebug() << MessageCheckName.c_str();
+                        qDebug() << MessageCheckNetwork;
+                        qDebug() << MessageCheckComment;
+
+                        QVector<MessageParameter*> msgPrms;
+
+
+                        for(XMLElement* elementPublish = element->FirstChildElement(); elementPublish != NULL; elementPublish = elementPublish->NextSiblingElement())
+                        {
+                            const char* ParameterCheckName = elementPublish->Attribute("name");
+                            const char* ParameterCheckType = elementPublish->Attribute("type");
+                            const char* ParameterCheckUnit = elementPublish->Attribute("unit");
+                            const char* ParameterCheckDefault = elementPublish->Attribute("default");
+                            const char* ParameterCheckMin = elementPublish->Attribute("min");
+                            const char* ParameterCheckMax = elementPublish->Attribute("max");
+                            const char* ParameterCheckComment = elementPublish->Attribute("comment");
+                            qDebug() << ParameterCheckName;
+                            qDebug() << ParameterCheckType;
+                            qDebug() << ParameterCheckUnit;
+                            qDebug() << ParameterCheckDefault;
+                            qDebug() << ParameterCheckMin;
+                            qDebug() << ParameterCheckMax;
+                            qDebug() << ParameterCheckComment;
+
+                            if(ParameterCheckUnit == NULL)
+                                ParameterCheckUnit = "";
+                            if(ParameterCheckMin == NULL)
+                                ParameterCheckMin = "";
+                            if(ParameterCheckMax == NULL)
+                                ParameterCheckMax = "";
+                            if(ParameterCheckComment == NULL)
+                                ParameterCheckComment = "";
+                            if(ParameterCheckDefault == NULL)
+                                ParameterCheckDefault = "";
+
+
+                            MessageParameter* messageParameter = new MessageParameter(
+                                        ParameterCheckName, ParameterCheckType, ParameterCheckUnit,
+                                        ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
+                                        ParameterCheckComment, "", "", -1); //Smells like memory leaks.
+
+                            msgPrms.append(messageParameter);
+
+                        }
+
+                        if(MessageCheckNetwork == NULL)
+                            MessageCheckNetwork = "";
+                        if(MessageCheckComment == NULL)
+                            MessageCheckComment = "";
+                        PubMessage* pubMessage = new PubMessage(
+                                    MessageCheckName, MessageCheckNetwork, MessageCheckComment, msgPrms);
+
+                        newICD.v_pPublishedMessages.append(pubMessage);
+
+
+
+                    }
+
+                    if(strcmp(element->Name(), "Enum") == 0)
+                    {
+                        string EnumCheckName = element->Attribute("name");
+                        string EnumCheckComment = element->Attribute("comment");
+                        qDebug() << EnumCheckName.c_str();
+                        qDebug() << EnumCheckComment.c_str();
+
+                        QVector<EnumValue*> enumValues;
+
+                        for(XMLElement* elementValue = element->FirstChildElement(); elementValue != NULL; elementValue = elementValue->NextSiblingElement())
+                        {
+                            string ValueCheckName = elementValue->Attribute("name");
+                            string ValueCheckValue = elementValue->Attribute("value");
+                            string ValueCheckComment = elementValue->Attribute("comment");
+
+                            qDebug() << ValueCheckName.c_str();
+                            qDebug() << ValueCheckValue.c_str();
+                            qDebug() << ValueCheckComment.c_str();
+
+
+                            EnumValue* enumValue = new EnumValue(
+                                        ValueCheckName,ValueCheckValue,ValueCheckComment); //Smells like memory leaks.
+
+                            enumValues.append(enumValue);
+                        }
+
+                        Enum* eNum = new Enum(
+                                    EnumCheckName, EnumCheckComment, enumValues); //Smells like memory leaks.
+                        newICD.v_pEnums.append(eNum);
+                    }
+
+                    if(strcmp(element->Name(), "Struct") == 0)
+                    {
+                        string StructCheckName = element->Attribute("name");
+                        const char* StructCheckNetwork = element->Attribute("network");
+                        string StructCheckComment = element->Attribute("comment");
+                        qDebug() << StructCheckName.c_str();
+                        qDebug() << StructCheckNetwork;
+                        qDebug() << StructCheckComment.c_str();
+
+                        QVector<StructParameter*> strPrms;
+
+
+                        for(XMLElement* elementStruct = element->FirstChildElement(); elementStruct != NULL; elementStruct = elementStruct->NextSiblingElement())
+                        {
+                            const char* ParameterCheckName = elementStruct->Attribute("name");
+                            const char* ParameterCheckType = elementStruct->Attribute("type");
+                            const char* ParameterCheckUnit = elementStruct->Attribute("unit");
+                            const char* ParameterCheckDefault = elementStruct->Attribute("default");
+                            const char* ParameterCheckMin = elementStruct->Attribute("min");
+                            const char* ParameterCheckMax = elementStruct->Attribute("max");
+                            const char* ParameterCheckComment = elementStruct->Attribute("comment");
+                            qDebug() << ParameterCheckName;
+                            qDebug() << ParameterCheckType;
+                            qDebug() << ParameterCheckUnit;
+                            qDebug() << ParameterCheckDefault;
+                            qDebug() << ParameterCheckMin;
+                            qDebug() << ParameterCheckMax;
+                            qDebug() << ParameterCheckComment;
+
+                            if(ParameterCheckUnit == 0)
+                                ParameterCheckUnit = "";
+                            if(ParameterCheckDefault == 0)
+                                ParameterCheckDefault = "";
+                            if(ParameterCheckMin == 0)
+                                ParameterCheckMin = "";
+                            if(ParameterCheckMax == 0)
+                                ParameterCheckMax = "";
+                            if(ParameterCheckComment == 0)
+                                ParameterCheckComment = "";
+
+                            StructParameter* structParameter = new StructParameter(
+                                        ParameterCheckName,ParameterCheckType,ParameterCheckUnit,
+                                        ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
+                                        ParameterCheckComment, "", ""); //Smells like memory leaks.
+
+                            strPrms.append(structParameter);
+                        }
+
+                        if(StructCheckNetwork == NULL)
+                            StructCheckNetwork = "";
+
+                        Struct* str = new Struct(
+                                    StructCheckName, StructCheckNetwork, StructCheckComment, strPrms);
+
+                        newICD.v_pStructs.append(str);
+                    }
+                }
+
+                newICD.name = strName;
+                QString parsedName = strName.c_str();
+                parsedName.remove("Icd", Qt::CaseSensitive);
+                parsedName.remove("Model", Qt::CaseSensitive); //ERROR SHOULD BE DYNAMIC
+                newICD.parsedName = parsedName.toStdString();
+
+                v_ICDs.append(newICD);
+
+
+                //This takes the existing file and saves it into
+                QFile file(filePath.c_str());
+                if(!QDir(cSTDLocation + QString::fromStdString(strName)).exists())
+                {
+                    if(!yesToAll)
+                    {
+                        if(QMessageBox::YesToAll == QMessageBox::critical(this, QString::fromStdString(strName) +" is new",
+                                                            "An ICD that has not been scanned before has been detected, and the folder directory will now be created",
+                                                            QMessageBox::Ok, QMessageBox::YesToAll))
+                        {
+                            yesToAll = true;
+                        }
+                    }
+                    QDir dir(cSTDLocation + QString::fromStdString(strName));
+                    if (!dir.exists()) {
+                        dir.mkpath(".");
+                        dir.mkpath("Functions");
+                        dir.mkpath("Tasks");
+                        dir.mkpath("Diagrams");
+                    }
+                }
+//                qDebug()<<file.copy(STDsFolder + QString::fromStdString(strName) + "/" +
+//                                    QString::fromStdString(strName) + ".xml");
+        }
+    }
+
+    if(v_ICDs.isEmpty())
+    {
+        QMessageBox::critical(this, "No ICDs found",
+                                            "No ICDs could be found in the directory you chose. Make sure you are looking for stock ICDs and not STD ICDs."
+                              "\nReload the program and try again.",
+                                            QMessageBox::Ok);
+
+        exit(0);
+    }
+}
+
+void MainWindow::ParseStdIcds()
+{
+    QString dir = QFileDialog::getExistingDirectory(this, tr("Open Directory"),
+                                                    "/home/jryan/simulation/dev/common/icd/",
+                                                    QFileDialog::ShowDirsOnly
+                                                    | QFileDialog::DontResolveSymlinks);
+
+    QDirIterator it(dir, QStringList() << "*.xml", QDir::Files, QDirIterator::Subdirectories);
+
+    if(!it.hasNext())
+        exit(0);
+
+    while (it.hasNext())
+    {
+
+            std::string filePath;
+            filePath = it.next().toStdString();
+            if(filePath.find("stdIcd") != string::npos)
+            if(it.fileName().toStdString() != "DatabaseH145.xml" &&
+                    it.fileName().toStdString() != "IcdModelQTGHost.xml" &&
+                    it.fileName().toStdString() != "IcdModelTemplate.xml" &&
+                    it.fileName().toStdString() != "IcdModelQTGExecutor.xml")
+            {
+                string Rmsf;
+                string Name;
+                XMLDocument doc;
+                doc.LoadFile( filePath.c_str() );
+                XMLElement* root = doc.FirstChildElement("StdInterface");
                 Rmsf = root->Attribute("namespace");
                 Name = root->Attribute("name");
                 string strName(Name);
@@ -322,7 +590,7 @@ void MainWindow::ParseXML()
 
                 v_ICDs.append(newICD);
 
-
+                /*
                 //This takes the existing file and saves it into
                 QFile file(filePath.c_str());
                 QString STDsFolder = "/home/jryan/simulation/dev/common/icd/STDs/";
@@ -340,13 +608,25 @@ void MainWindow::ParseXML()
                     }
                 }
                 qDebug()<<file.copy(STDsFolder + QString::fromStdString(strName) + "/" +
-                                    QString::fromStdString(strName) + ".xml");
+                                    QString::fromStdString(strName) + ".xml")
+                */
         }
+    }
+
+    if(v_ICDs.isEmpty())
+    {
+        QMessageBox::critical(this, "No ICDs found",
+                                            "No ICDs could be found in the directory you chose. Make sure you are looking for STD ICDs and not stock ICDs."
+                              "\nReload the program and try again.",
+                                            QMessageBox::Ok);
+
+        exit(0);
     }
 }
 
 void MainWindow::SetupIcdMenu()
 {
+    ui->listWidget->clear();
     foreach (ICD icd, v_ICDs) {
         ui->listWidget->addItem(QString::fromUtf8(icd.name.c_str()));
     }
@@ -357,6 +637,7 @@ void MainWindow::SetupIcdMenu()
 void MainWindow::SetupMessageBrowser()
 {
     ui->messageBrowser->clear();
+    pubOrSub.clear();
     ui->messageBrowser->setColumnCount(1);
     ui->messageBrowser->setHeaderLabel("Message Names");
     pubOrSub.append(new QTreeWidgetItem((QTreeWidget*)0,
@@ -610,10 +891,12 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
         //Draw new Model if needed
         if(newModelToBeDrawn)
         {
+//            CheckUnsortedSceneResize();
+
             QRectF newIcdRect = QRect(horizontalSpacing, 50, 100, 50);
 
-            if (horizontalSpacing >2000)
-                icdScene->setSceneRect(0,0,5000,3500);
+//            if (horizontalSpacing >2000)
+//                icdScene->setSceneRect(0,0,5000,3500);
 
             QPointF midPoint = QLineF(newIcdRect.bottomLeft(),newIcdRect.bottomRight()).pointAt(0.5);
             QLineF modelLine = QLineF(midPoint, midPoint);
@@ -692,6 +975,8 @@ void MainWindow::SetupDrawingArea()
         icdScene->setSceneRect(0,0,2500,2500);
         ui->graphicsView->setScene(icdScene);
         ui->graphicsView->setBackgroundBrush(Qt::white);
+
+        ui->graphicsView->update();
 
         /*
         QRectF testRect = QRect(icdScene->width()/2,50,100,50);
@@ -822,6 +1107,8 @@ void MainWindow::SaveAllSequenceDiagrams()
     {
         string fileName = v_ICDs[i].name.c_str();
         fileName += ".xml";
+        fileName.insert(0, "/std");
+        fileName.insert(0, v_ICDs[i].name.c_str());
         fileName.insert(0,cSTDLocation.toStdString());
         XMLDocument diagram;
         diagram.SaveFile(fileName.c_str()); // Creates the file.
@@ -833,7 +1120,9 @@ void MainWindow::SaveAllSequenceDiagrams()
         XMLPrinter printer(pFile);
 
         printer.PushComment(v_ICDs[i].name.c_str());
-        printer.OpenElement(v_ICDs[i].name.c_str());
+        printer.OpenElement("StdInterface");
+        printer.PushAttribute("namespace", "STD");
+        printer.PushAttribute("name", v_ICDs[i].name.c_str());
 
         printer.OpenElement("Subscribe");
         for(int j = 0; j < v_ICDs[i].v_pSubscribedMessages.size(); j++)
@@ -887,13 +1176,14 @@ void MainWindow::SaveAllSequenceDiagrams()
             printer.CloseElement();
         }
 
-        printer.OpenElement("Publish");
-        printer.PushAttribute("Messages", v_ICDs[i].v_pPublishedMessages.size());
+//        printer.OpenElement("Publish");
+//        printer.PushAttribute("Messages", v_ICDs[i].v_pPublishedMessages.size());
         for(int j = 0; j < v_ICDs[i].v_pPublishedMessages.size(); j++)
         {
             printer.OpenElement("Message");
             printer.PushAttribute("name", v_ICDs[i].v_pPublishedMessages[j]->pMname.c_str());
             printer.PushAttribute("comment", v_ICDs[i].v_pPublishedMessages[j]->pMcomment.c_str());
+            printer.PushAttribute("network", v_ICDs[i].v_pPublishedMessages[j]->pMnetwork.c_str());
 
             for(int k = 0; k < v_ICDs[i].v_pPublishedMessages[j]->v_pPubMparameters.size(); k++)
             {
@@ -913,7 +1203,7 @@ void MainWindow::SaveAllSequenceDiagrams()
 
             printer.CloseElement();
         }
-        printer.CloseElement();
+//        printer.CloseElement();
 
         printer.CloseElement();
         diagram.Print(&printer);
@@ -931,6 +1221,7 @@ void MainWindow::SetupFileDirectories()
             dir.mkpath(".");
             dir.mkpath("Functions");
             dir.mkpath("Tasks");
+            dir.mkpath("Diagrams");
         }
     }
 }
@@ -1006,7 +1297,7 @@ void MainWindow::CheckUnsortedSceneResize()
     }
     if(verticalSpacing > sceneUnsortedVerticalSizing)
     {
-//        sceneUnsortedVerticalSizing += cSceneSizeIncrement;
+        sceneUnsortedVerticalSizing += cSceneSizeIncrement;
     }
     icdScene->setSceneRect(0,0,sceneUnsortedHorizontalSizing,sceneUnsortedVerticalSizing);
 }
@@ -1274,9 +1565,8 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     sceneFunctionHorizontalSizing = 2500;
     sceneFunctionVerticalSizing = 2500;
 
-    //draw diagram
+    //find the icd and draw its unsorted diagram
     const char* selectedEntry = _item->text().toUtf8().constData();
-        // This is the first item.
     foreach (ICD icd, v_ICDs) {
         if(strcmp(selectedEntry, icd.name.c_str()) == 0)
         {
@@ -1292,8 +1582,9 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     //update Function msg browser
     subItems.clear(); //MEMORY LEAKS
     pubItems.clear(); //MEMORY LEAKS
-    ui->messageBrowser->topLevelItem(0)->takeChildren();
-    ui->messageBrowser->topLevelItem(1)->takeChildren();
+    SetupMessageBrowser();
+//    ui->messageBrowser->topLevelItem(0)->takeChildren();
+//    ui->messageBrowser->topLevelItem(1)->takeChildren();
 
     foreach (SubMessage* subMsg, selectedICD.v_pSubscribedMessages) {
         QString IcdName = QString::fromStdString(subMsg->sMicd);
@@ -1330,7 +1621,7 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     ui->messageBrowser->topLevelItem(1)->addChildren(pubItems);
 
 //    SetupDrawingArea();
-    ResetScroll();
+//    ResetScroll();
     SetupFunctionBrowser();
 
 }
@@ -2199,6 +2490,32 @@ void MainWindow::onTabChange(int _tab)
 void MainWindow::onCheckforChanges()
 {
 
+}
+
+void MainWindow::onSaveToJPG()
+{
+    QGraphicsScene* scene;
+
+    if(ui->tabWidget->currentIndex()==0)
+        scene = icdScene;
+    else if(ui->tabWidget->currentIndex()==1)
+        scene = functionScene;
+    else if(ui->tabWidget->currentIndex()==2)
+        scene = taskflowScene;
+
+//    scene->setSceneRect(scene->itemsBoundingRect());
+
+    QString saveDirectory = "/home/jryan/simulation/dev/common/icd/STDs/" + QString::fromStdString(selectedICD.name) +"/Diagrams/";
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Save Directory"),
+                                                    saveDirectory,
+                                                    tr("JPG files (*.jpg)"));
+
+    QImage image(scene->sceneRect().size().toSize(), QImage::Format_ARGB32);
+    image.fill(Qt::white);
+    QPainter painter(&image);
+    scene->render(&painter);
+    fileName += ".jpg";
+    qDebug() << image.save(fileName);
 }
 
 void MainWindow::onFunctionDropdownMenuClicked(QAction * _action)
