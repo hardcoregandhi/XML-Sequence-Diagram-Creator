@@ -302,6 +302,8 @@
     <addaction name="actionReload_Stock_XMLs"/>
     <addaction name="actionReload_STD_XMLs"/>
     <addaction name="actionSave_XML_Changes"/>
+    <addaction name="actionCheck_for_ICD_Changes"/>
+    <addaction name="actionRevert_to_stock_ICDs"/>
    </widget>
    <widget class="QMenu" name="menuDiagram">
     <property name="title">
@@ -393,6 +395,16 @@
   <action name="actionSave_to_JPG">
    <property name="text">
     <string>Save to JPG</string>
+   </property>
+  </action>
+  <action name="actionCheck_for_ICD_Changes">
+   <property name="text">
+    <string>Check for ICD Changes</string>
+   </property>
+  </action>
+  <action name="actionRevert_to_stock_ICDs">
+   <property name="text">
+    <string>Revert to stock ICDs</string>
    </property>
   </action>
  </widget>

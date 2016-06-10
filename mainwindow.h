@@ -9,19 +9,45 @@
 #include "QTreeWidget"
 #include "QPushButton"
 #include "QMenu"
+#include <QDate>
 
 namespace Ui {
 class MainWindow;
 }
 
+enum AcceptedStatus
+{
+    eToBeAssessed = 0,
+    eAccepted = 1,
+    eRejected = 2
+};
+
+enum ModifiedStatus
+{
+    eNotModified = 0,
+    eRemoved = 1,
+    eAdded = 2,
+    eModified = 3
+};
+
+//std::map<AcceptedStatus, std::string> acceptedStatusMap = {{eNotModified, "eNotModified"}, {eRemoved, "eRemoved"}, {eAdded, "eAdded"}, {eModified, "eModified"}};
+
 struct SubMessage{
-  std::string sMicd;
-  std::string sMmessage;
+    std::string sMicd;
+    std::string sMmessage;
+    std::string sMmodified;
+    std::string sMaccepted;
 
-  SubMessage(std::string _sMicd, std::string _sMmessage){sMicd = _sMicd; sMmessage = _sMmessage;}
-//  std::string GetsMicd(){return sMicd;}
-//  std::string sMmessage(){return sMmessage;}
-
+    SubMessage(std::string _sMicd,
+               std::string _sMmessage,
+               std::string _sMmodified,
+               std::string _sMaccepted)
+    {
+        sMicd = _sMicd;
+        sMmessage = _sMmessage;
+        sMmodified = _sMmodified;
+        sMaccepted = _sMaccepted;
+    }
 };
 
 struct MessageParameter{
@@ -34,7 +60,7 @@ struct MessageParameter{
     std::string pMcomment;
     std::string pMmodified;
     std::string pMaccepted;
-    int pMranking;
+    int pMranking;  //this needs to go
 
     MessageParameter(std::string _pMname,
                       std::string _pMtype,
@@ -61,22 +87,27 @@ struct MessageParameter{
 };
 
 struct PubMessage{
-  std::string pMname;
-  std::string pMnetwork;
-  std::string pMcomment;
-  QVector<MessageParameter*> v_pPubMparameters;
+    std::string pMname;
+    std::string pMnetwork;
+    std::string pMcomment;
+    std::string pMmodified;
+    std::string pMaccepted;
+    QVector<MessageParameter*> v_pPubMparameters;
 
-  PubMessage(std::string _pMname,
+    PubMessage(std::string _pMname,
                 std::string _pMnetwork,
                 std::string _pMcomment,
-                QVector<MessageParameter*> _pMparameters)
+                QVector<MessageParameter*> _pMparameters,
+                std::string _pMmodified,
+                std::string _pMaccepted)
   {
       pMname = _pMname;
       pMnetwork = _pMnetwork;
       pMcomment = _pMcomment;
       v_pPubMparameters = _pMparameters;
+      pMmodified = _pMmodified;
+      pMaccepted = _pMaccepted;
   }
-//  std::string GetpMname(){return pMname;}
 
 };
 
@@ -89,11 +120,15 @@ struct EnumValue{
 
   EnumValue(std::string _eNValname,
                 std::string _eNValvalue,
-                std::string _eNValcomment)
+                std::string _eNValcomment,
+                std::string _eNValmodified,
+                std::string _eNValaccepted)
   {
       eNValname = _eNValname;
       eNValvalue = _eNValvalue;
       eNValcomment = _eNValcomment;
+      eNValmodified = _eNValmodified;
+      eNValaccepted = _eNValaccepted;
   }
 };
 
@@ -174,6 +209,7 @@ struct ICD{
     QVector<Struct*> v_pStructs;
     std::string name;
     std::string parsedName;
+    QDateTime recentIcdDate;
 };
 
 struct DrawnModelObject{
@@ -208,6 +244,10 @@ struct DrawnTaskFunctions{
     QPushButton* label;
 };
 
+//const char* aAcceptedStatus[] ={"eToBeAssessed", "eAccepted","eRejected"};
+//const char* aModifiedStatus[] ={"eNotModified","eRemoved", "eAdded","eModified"};
+
+
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -218,7 +258,8 @@ public:
 
     void ParseStockIcds();
     void ParseStdIcds();
-    void SaveAllSequenceDiagrams();
+    void SaveAllXMLs();
+    void SaveOneXML(ICD _icd);
 
     void SetupFileDirectories();
     void SetupIcdMenu();
@@ -267,13 +308,18 @@ public slots:
     void onHomeAllTriggered()   { ResetScroll();                }
     void onSaveFunction()       { SaveFunctionScene();          }
     void onLoadFunction()       { LoadFunctionScene();          }
-    void onParseStdXmls()       { ParseStdIcds();               }
+    void onParseStdXmls()       { ParseStdIcds();
+                                  SetupMessageBrowser();
+                                  SetupIcdMenu();               }
     void onParseStockXmls()     { ParseStockIcds();
                                   SetupMessageBrowser();
                                   SetupIcdMenu();               }
-    void onSaveXmlChanges()     { SaveAllSequenceDiagrams();    }
+    void onSaveXmlChanges()     { SaveAllXMLs();    }
 
     void onSaveToJPG();
+    void onRevertToStockIcds()  { ParseStockIcds();
+                                  SaveAllXMLs();
+                                  onParseStdXmls();             }
 
 
 private:
