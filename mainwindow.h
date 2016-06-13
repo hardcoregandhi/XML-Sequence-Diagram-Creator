@@ -231,6 +231,8 @@ struct DrawnDataObject{
     QPolygonF arrowPoly;
     QPushButton* label;
     std::string pubOrSub;
+    std::string modified;
+    std::string accepted;
     int posX;
     int posY;
 };
@@ -258,6 +260,7 @@ public:
 
     void ParseStockIcds();
     void ParseStdIcds();
+    ICD ParseSingleStdIcd(QString _filePath);
     void SaveAllXMLs();
     void SaveOneXML(ICD _icd);
 

@@ -643,6 +643,218 @@ void MainWindow::ParseStdIcds()
     }
 }
 
+ICD MainWindow::ParseSingleStdIcd(QString _filePath)
+{
+    QString filePath = _filePath;
+    string Rmsf;
+    string Name;
+    XMLDocument doc;
+    doc.LoadFile( filePath.toStdString().c_str() );
+    XMLElement* root = doc.FirstChildElement("StdInterface");
+    Rmsf = root->Attribute("namespace");
+    Name = root->Attribute("name");
+    QDateTime recentIcdDate = QDateTime::fromString(root->Attribute("recentIcdDate"),Qt::TextDate);
+    string strName(Name);
+
+    string textNode = root->Attribute("name");
+    qDebug() << textNode.c_str();
+
+    ICD newICD;
+
+    for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
+    {
+        qDebug() << element->Name();
+
+        if(strcmp(element->Name(), "Subscribe") == 0)
+        {
+
+            for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+            {
+                string SubscribeCheckIcd = elementSubscribe->Attribute("icd");
+                string SubscribeCheckMessage = elementSubscribe->Attribute("message");
+                string SubscribeCheckModified= elementSubscribe->Attribute("modified");
+                string SubscribeCheckAccepted = elementSubscribe->Attribute("accepted");
+                qDebug() << SubscribeCheckIcd.c_str();
+                qDebug() << SubscribeCheckMessage.c_str();
+
+                SubMessage* subMessage = new SubMessage(
+                            SubscribeCheckIcd, SubscribeCheckMessage, SubscribeCheckModified, SubscribeCheckAccepted); //Smells like memory leaks.
+                newICD.v_pSubscribedMessages.append(subMessage);
+            }
+
+
+        }
+
+        if(strcmp(element->Name(), "Message") == 0)
+        {
+            string MessageCheckName = element->Attribute("name");
+            const char* MessageCheckNetwork = element->Attribute("network");
+            const char* MessageCheckComment = element->Attribute("comment");
+            const char* MessageCheckMod = element->Attribute("modified");
+            const char* MessageCheckAcc = element->Attribute("accepted");
+            qDebug() << MessageCheckName.c_str();
+            qDebug() << MessageCheckNetwork;
+            qDebug() << MessageCheckComment;
+
+            QVector<MessageParameter*> msgPrms;
+
+
+            for(XMLElement* elementPublish = element->FirstChildElement(); elementPublish != NULL; elementPublish = elementPublish->NextSiblingElement())
+            {
+                const char* ParameterCheckName = elementPublish->Attribute("name");
+                const char* ParameterCheckType = elementPublish->Attribute("type");
+                const char* ParameterCheckUnit = elementPublish->Attribute("unit");
+                const char* ParameterCheckDefault = elementPublish->Attribute("default");
+                const char* ParameterCheckMin = elementPublish->Attribute("min");
+                const char* ParameterCheckMax = elementPublish->Attribute("max");
+                const char* ParameterCheckComment = elementPublish->Attribute("comment");
+                const char* ParameterCheckMod = elementPublish->Attribute("modified");
+                const char* ParameterCheckAcc = elementPublish->Attribute("accepted");
+                qDebug() << ParameterCheckName;
+                qDebug() << ParameterCheckType;
+                qDebug() << ParameterCheckUnit;
+                qDebug() << ParameterCheckDefault;
+                qDebug() << ParameterCheckMin;
+                qDebug() << ParameterCheckMax;
+                qDebug() << ParameterCheckComment;
+
+                if(ParameterCheckUnit == NULL)
+                    ParameterCheckUnit = "";
+                if(ParameterCheckMin == NULL)
+                    ParameterCheckMin = "";
+                if(ParameterCheckMax == NULL)
+                    ParameterCheckMax = "";
+                if(ParameterCheckComment == NULL)
+                    ParameterCheckComment = "";
+                if(ParameterCheckDefault == NULL)
+                    ParameterCheckDefault = "";
+
+
+                MessageParameter* messageParameter = new MessageParameter(
+                            ParameterCheckName, ParameterCheckType, ParameterCheckUnit,
+                            ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
+                            ParameterCheckComment, ParameterCheckMod, ParameterCheckAcc, -1); //Smells like memory leaks.
+
+                msgPrms.append(messageParameter);
+
+            }
+
+            if(MessageCheckNetwork == NULL)
+                MessageCheckNetwork = "";
+            if(MessageCheckComment == NULL)
+                MessageCheckComment = "";
+            PubMessage* pubMessage = new PubMessage(
+                        MessageCheckName, MessageCheckNetwork, MessageCheckComment, msgPrms, MessageCheckMod, MessageCheckAcc);
+
+            newICD.v_pPublishedMessages.append(pubMessage);
+
+
+
+        }
+
+        if(strcmp(element->Name(), "Enum") == 0)
+        {
+            string EnumCheckName = element->Attribute("name");
+            string EnumCheckComment = element->Attribute("comment");
+            qDebug() << EnumCheckName.c_str();
+            qDebug() << EnumCheckComment.c_str();
+
+            QVector<EnumValue*> enumValues;
+
+            for(XMLElement* elementValue = element->FirstChildElement(); elementValue != NULL; elementValue = elementValue->NextSiblingElement())
+            {
+                string ValueCheckName = elementValue->Attribute("name");
+                string ValueCheckValue = elementValue->Attribute("value");
+                string ValueCheckComment = elementValue->Attribute("comment");
+                string ValueCheckMod = elementValue->Attribute("modified");
+                string ValueCheckAcc = elementValue->Attribute("accepted");
+
+                qDebug() << ValueCheckName.c_str();
+                qDebug() << ValueCheckValue.c_str();
+                qDebug() << ValueCheckComment.c_str();
+
+                EnumValue* enumValue = new EnumValue(
+                            ValueCheckName,ValueCheckValue,ValueCheckComment,ValueCheckMod,ValueCheckAcc); //Smells like memory leaks.
+
+                enumValues.append(enumValue);
+            }
+
+            Enum* eNum = new Enum(
+                        EnumCheckName, EnumCheckComment, enumValues); //Smells like memory leaks.
+            newICD.v_pEnums.append(eNum);
+
+
+        }
+
+        if(strcmp(element->Name(), "Struct") == 0)
+        {
+            string StructCheckName = element->Attribute("name");
+            const char* StructCheckNetwork = element->Attribute("network");
+            string StructCheckComment = element->Attribute("comment");
+            qDebug() << StructCheckName.c_str();
+            qDebug() << StructCheckNetwork;
+            qDebug() << StructCheckComment.c_str();
+
+            QVector<StructParameter*> strPrms;
+
+
+            for(XMLElement* elementStruct = element->FirstChildElement(); elementStruct != NULL; elementStruct = elementStruct->NextSiblingElement())
+            {
+                const char* ParameterCheckName = elementStruct->Attribute("name");
+                const char* ParameterCheckType = elementStruct->Attribute("type");
+                const char* ParameterCheckUnit = elementStruct->Attribute("unit");
+                const char* ParameterCheckDefault = elementStruct->Attribute("default");
+                const char* ParameterCheckMin = elementStruct->Attribute("min");
+                const char* ParameterCheckMax = elementStruct->Attribute("max");
+                const char* ParameterCheckComment = elementStruct->Attribute("comment");
+                const char* ParameterCheckMod = elementStruct->Attribute("modified");
+                const char* ParameterCheckAcc = elementStruct->Attribute("accepted");
+                qDebug() << ParameterCheckName;
+                qDebug() << ParameterCheckType;
+                qDebug() << ParameterCheckUnit;
+                qDebug() << ParameterCheckDefault;
+                qDebug() << ParameterCheckMin;
+                qDebug() << ParameterCheckMax;
+                qDebug() << ParameterCheckComment;
+
+                if(ParameterCheckUnit == 0)
+                    ParameterCheckUnit = "";
+                if(ParameterCheckDefault == 0)
+                    ParameterCheckDefault = "";
+                if(ParameterCheckMin == 0)
+                    ParameterCheckMin = "";
+                if(ParameterCheckMax == 0)
+                    ParameterCheckMax = "";
+                if(ParameterCheckComment == 0)
+                    ParameterCheckComment = "";
+
+                StructParameter* structParameter = new StructParameter(
+                            ParameterCheckName,ParameterCheckType,ParameterCheckUnit,
+                            ParameterCheckDefault, ParameterCheckMin, ParameterCheckMax,
+                            ParameterCheckComment, ParameterCheckMod, ParameterCheckAcc); //Smells like memory leaks.
+
+                strPrms.append(structParameter);
+            }
+
+            if(StructCheckNetwork == NULL)
+                StructCheckNetwork = "";
+
+            Struct* str = new Struct(
+                        StructCheckName, StructCheckNetwork, StructCheckComment, strPrms);
+
+        }
+    }
+
+    newICD.name = strName;
+    QString parsedName = strName.c_str();
+    parsedName.remove("Icd", Qt::CaseSensitive);
+    parsedName.remove("Model", Qt::CaseSensitive); //ERROR SHOULD BE DYNAMIC
+    newICD.parsedName = parsedName.toStdString();
+    newICD.recentIcdDate = recentIcdDate;
+
+    return newICD;
+}
+
 void MainWindow::SetupIcdMenu()
 {
     ui->listWidget->clear();
@@ -1652,6 +1864,47 @@ void MainWindow::LoadFunctionScene()
 
     }
 
+    //Get current modified status of each variable from the respective ICD
+    ICD stdICD = ParseSingleStdIcd(cSTDLocation + QString::fromStdString(selectedICD.name));
+
+    //ATTENTION : A thing of beauty
+    foreach (DrawnDataObject* ddo, functionDrawnData)
+    {
+        if(ddo->pubOrSub == "sub")
+        {
+            foreach (SubMessage* sm, stdICD.v_pSubscribedMessages)
+            {
+                if(sm->sMmessage == ddo->name)
+                {
+                    ddo->modified = sm->sMmodified;
+                    ddo->accepted = sm->sMaccepted;
+                }
+            }
+        }
+        else if(ddo->pubOrSub == "pub")
+        {
+            foreach (PubMessage* pm, stdICD.v_pPublishedMessages)
+            {
+                if(pm->pMname == ddo->name)
+                {
+                    ddo->modified = pm->pMmodified;
+                    ddo->accepted = pm->pMaccepted;
+                }
+                else
+                {
+                    foreach (MessageParameter* mp, pm->v_pPubMparameters)
+                    {
+                        if(mp->pMname == ddo->name)
+                        {
+                            ddo->modified = mp->pMmodified;
+                            ddo->accepted = mp->pMaccepted;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     ui->statusBar->showMessage("Loading Complete");
     RedrawFunctionScene();
     onHomeTriggered();
@@ -1860,7 +2113,7 @@ void MainWindow::onAddDataExchangeClicked()
                 if(newModelObject->name!="")
                 {
                 QLineF dataArrow = QLine(newModelObject->line.p1().x(), functionVerticalSpacing, functionDrawnModels[1]->line.p1().x(), functionVerticalSpacing);
-                QPolygonF arrowPoly = CreateArrowHead(dataArrow, false);
+                QPolygonF arrowPoly = CreateArrowHead(dataArrow, true);
                 functionScene->addLine(dataArrow);
                 functionScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
 
@@ -1900,10 +2153,17 @@ void MainWindow::onAddDataExchangeClicked()
                     }
                 }
 
-                //Check The model it needs hasnt been drawn before
+                QString parsedpMsgName = selectedPub->pMname.c_str();
+                parsedpMsgName.remove("Msg", Qt::CaseSensitive);
+                parsedpMsgName.remove(selectedICD.parsedName.c_str(), Qt::CaseSensitive);
+
+                //Validation check for duplicates
                 foreach (DrawnModelObject* drawn, functionDrawnModels) {
-                    if(strcmp(selectedPub->pMname.c_str(), drawn->name.c_str()) == 0)
+                    if(strcmp(parsedpMsgName.toStdString().c_str(), drawn->parsedName.c_str()) == 0)
+                    {
                         newModelToBeDrawn = false;
+                        newModelObject = drawn;
+                    }
                 }
 
 
@@ -2051,7 +2311,7 @@ void MainWindow::onAddDataExchangeClicked()
         }
 
         QLineF dataArrow = QLine(newModelObject->line.p1().x(), functionVerticalSpacing, functionDrawnModels[1]->line.p1().x(), functionVerticalSpacing);
-        QPolygonF arrowPoly = CreateArrowHead(dataArrow, false);
+        QPolygonF arrowPoly = CreateArrowHead(dataArrow, true);
         functionScene->addLine(dataArrow);
         functionScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
 
@@ -2112,7 +2372,7 @@ void MainWindow::onAddDataExchangeClicked()
 //            qDebug() << parsedpMsgName.toStdString().c_str();
 //            qDebug() << drawn->parsedName.c_str();
 //            qDebug() << strcmp(parsedpMsgName.toStdString().c_str(), drawn->parsedName.c_str());
-            if(strcmp(selectedPub->pMname.c_str(), drawn->name.c_str()) == 0)
+            if(strcmp(parsedpMsgName.toStdString().c_str(), drawn->parsedName.c_str()) == 0)
             {
                 newModelToBeDrawn = false;
                 newModelObject = drawn;
@@ -2154,7 +2414,7 @@ void MainWindow::onAddDataExchangeClicked()
         }
 
         QLineF dataArrow = QLine(newModelObject->line.p1().x(), functionVerticalSpacing, functionDrawnModels[1]->line.p1().x(), functionVerticalSpacing);
-        QPolygonF arrowPoly = CreateArrowHead(dataArrow, true);
+        QPolygonF arrowPoly = CreateArrowHead(dataArrow, false);
         functionScene->addLine(dataArrow);
         functionScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
 
@@ -3641,6 +3901,10 @@ void MainWindow::onCheckforChanges()
                                     msgHandled = true;
                                     stockPub->pMmodified = aModifiedStatus[eAdded];
                                     stockPub->pMaccepted = aAcceptedStatus[eToBeAssessed];
+                                    foreach (MessageParameter* mp, stockPub->v_pPubMparameters) {
+                                        mp->pMmodified = aModifiedStatus[eAdded];
+                                        mp->pMaccepted = aAcceptedStatus[eToBeAssessed];
+                                    }
                                     tempStdICD.v_pPublishedMessages.append(stockPub);
                                     tempStockICD.v_pPublishedMessages.removeOne(stockPub);
                                     break;
