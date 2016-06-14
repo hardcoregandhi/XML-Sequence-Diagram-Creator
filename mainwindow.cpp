@@ -86,6 +86,8 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onHomeAllTriggered()));
     connect(ui->addFunction, SIGNAL(clicked()),this,
               SLOT(onAddFunctionToTask()));
+    connect(ui->actionNew, SIGNAL(triggered()),this,
+              SLOT(onNewTaskflowScene()));
     connect(ui->actionSave_As, SIGNAL(triggered()),this,
               SLOT(onSaveTaskflowScene()));
     connect(ui->actionOpen, SIGNAL(triggered()),this,
@@ -104,6 +106,10 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onCheckforChanges()));
     connect(ui->actionRevert_to_stock_ICDs, SIGNAL(triggered()),this,
               SLOT(onRevertToStockIcds()) );
+    connect(ui->actionToggle_Function_Style, SIGNAL(triggered()),this,
+              SLOT(onToggleFunctionStyle()) );
+    connect(ui->actionToggle_Task_Style, SIGNAL(triggered()),this,
+              SLOT(onToggleTaskStyle()) );
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -842,6 +848,8 @@ ICD MainWindow::ParseSingleStdIcd(QString _filePath)
             Struct* str = new Struct(
                         StructCheckName, StructCheckNetwork, StructCheckComment, strPrms);
 
+            newICD.v_pStructs.append(str);
+
         }
     }
 
@@ -900,7 +908,12 @@ void MainWindow::SetupFunctionBrowser()
 
 void MainWindow::SetupTaskflowScene()
 {
-    DrawnTaskFunctions* startObject = new DrawnTaskFunctions;
+    taskflowDrawnFunctions.clear();
+    taskTitle.clear();
+    taskflowSelectedButton = NULL;
+    taskflowSelectedFunctionObject = NULL;
+
+    DrawnTaskFunction* startObject = new DrawnTaskFunction;
     startObject->name = "startObject";
     startObject->dir = "";
     taskflowDrawnFunctions.append(startObject);
@@ -910,7 +923,7 @@ void MainWindow::SetupTaskflowScene()
 
     taskflowScene->addEllipse(startCircle, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
 
-    DrawnTaskFunctions* endObject = new DrawnTaskFunctions;
+    DrawnTaskFunction* endObject = new DrawnTaskFunction;
     endObject->name = "endObject";
     endObject->dir = "";
     taskflowDrawnFunctions.append(endObject);
@@ -932,6 +945,12 @@ void MainWindow::SetupContextMenu()
     v_pfunctionDropdownMenuActions.append(new QAction("Move Up", this));
     v_pfunctionDropdownMenuActions.append(new QAction("Move Down", this));
     v_pfunctionDropdownMenuActions.append(new QAction("Delete", this));
+    QAction *act = new QAction(this);
+    act->setSeparator(true);
+     v_pfunctionDropdownMenuActions.append(act);
+    v_pfunctionDropdownMenuActions.append(new QAction("Accept Change", this));
+    v_pfunctionDropdownMenuActions.append(new QAction("Reject Change", this));
+    v_pfunctionDropdownMenuActions.append(new QAction("Change to be Assessed", this));
     functionDropdownMenu->addActions(v_pfunctionDropdownMenuActions);
     functionDropdownMenu->setObjectName("functionDropdownMenu");
 
@@ -1317,6 +1336,7 @@ void MainWindow::SetupDrawingArea()
 
         functionSelectedButton = NULL;
         functionSelectedDataObject = NULL;
+        toggleFunctionStyleOn = true;
     }
 
     if(taskflowScene)
@@ -1328,6 +1348,8 @@ void MainWindow::SetupDrawingArea()
 
         taskflowSelectedButton = NULL;
         taskflowSelectedFunctionObject = NULL;
+        toggleTaskStyleOn = true;
+
     }
 
 }
@@ -1666,6 +1688,8 @@ void MainWindow::RedrawFunctionScene()
 
     functionHorizontalSpacing = 50;
     functionVerticalSpacing = 150;
+    functionSelectedButton = NULL;
+    functionSelectedDataObject = NULL;
 
     functionScene->clear();
     functionScene->clear();
@@ -1735,7 +1759,33 @@ void MainWindow::RedrawFunctionScene()
         QPushButton* tempLabel = new QPushButton(doo->name.c_str());
         tempLabel->move(doo->line.p2().x()+15,doo->line.p2().y()-25);
         tempLabel->setFlat(true);
-        tempLabel->setStyleSheet("background-color: transparent");
+
+        if(toggleFunctionStyleOn)
+        {
+            if(doo->modified == aModifiedStatus[eNotModified])
+                tempLabel->setStyleSheet("color: rgba(0,0,0,1.0)");
+            else if(doo->modified == aModifiedStatus[eRemoved])
+                tempLabel->setStyleSheet("color: rgba(255,0,0,1.0)");
+            else if(doo->modified == aModifiedStatus[eAdded])
+                tempLabel->setStyleSheet("color: rgba(0,255,0,1.0)");
+            else if(doo->modified == aModifiedStatus[eModified])
+                tempLabel->setStyleSheet("color: rgba(0,0,255,1.0)");
+            else
+                tempLabel->setStyleSheet("color: rgba(0,0,0,1.0)");
+
+            if(doo->modified == aAcceptedStatus[eAccepted])
+                tempLabel->setStyleSheet("background-color: rgba(0,255,0,0.3)");
+            else if(doo->modified == aAcceptedStatus[eRejected])
+                tempLabel->setStyleSheet("background-color: rgba(255,0,0,0.3)");
+            else if(doo->modified == aAcceptedStatus[eToBeAssessed])
+                tempLabel->setStyleSheet("background-color: rgba(192,192,192,0.3)");
+        }
+        else
+        {
+            tempLabel->setStyleSheet("color: rgba(0,0,0,1.0)");
+            tempLabel->setStyleSheet("background-color: transparent");
+        }
+
         functionScene->addWidget(tempLabel);
         functionScene->addPolygon(doo->arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
         doo->label = tempLabel;
@@ -1865,7 +1915,112 @@ void MainWindow::LoadFunctionScene()
     }
 
     //Get current modified status of each variable from the respective ICD
-    ICD stdICD = ParseSingleStdIcd(cSTDLocation + QString::fromStdString(selectedICD.name));
+    ICD stdICD = ParseSingleStdIcd(cSTDLocation + QString::fromStdString(selectedICD.name) +
+                                   "/std" + QString::fromStdString(selectedICD.name) + ".xml");
+
+    //ATTENTION : A thing of beauty
+    foreach (DrawnDataObject* ddo, functionDrawnData)
+    {
+        if(ddo->pubOrSub == "sub")
+        {
+            foreach (SubMessage* sm, stdICD.v_pSubscribedMessages)
+            {
+                if(sm->sMmessage == ddo->name)
+                {
+                    ddo->modified = sm->sMmodified;
+                    ddo->accepted = sm->sMaccepted;
+                }
+            }
+        }
+        else if(ddo->pubOrSub == "pub")
+        {
+            foreach (PubMessage* pm, stdICD.v_pPublishedMessages)
+            {
+                if(pm->pMname == ddo->name)
+                {
+                    ddo->modified = pm->pMmodified;
+                    ddo->accepted = pm->pMaccepted;
+                }
+                else
+                {
+                    foreach (MessageParameter* mp, pm->v_pPubMparameters)
+                    {
+                        if(mp->pMname == ddo->name)
+                        {
+                            ddo->modified = mp->pMmodified;
+                            ddo->accepted = mp->pMaccepted;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    ui->statusBar->showMessage("Loading Complete");
+    RedrawFunctionScene();
+    onHomeTriggered();
+}
+
+void MainWindow::LoadCustomFunctionScene(QString _fileName)
+{
+    //Clear everything out
+    functionDrawnModels.clear();
+    functionDrawnData.clear();
+    functionTitle.clear();
+    functionSelectedButton = NULL;
+    functionSelectedDataObject = NULL;
+
+    QString fileName = _fileName;
+
+    XMLDocument doc;
+    doc.LoadFile( fileName.toStdString().c_str() );
+    XMLElement* root = doc.FirstChildElement();
+    functionTitle = root->Attribute("name");
+
+    for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
+    {
+        if(strcmp(element->Name(), "Models") == 0)
+        {
+            for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+            {
+                DrawnModelObject* dmo = new DrawnModelObject();
+                string dmoName = elementSubscribe->Attribute("name");
+                string dmoParsedName = elementSubscribe->Attribute("parsedName");
+
+                dmo->name = dmoName;
+                dmo->parsedName= dmoParsedName;
+
+                functionDrawnModels.append(dmo);
+            }
+        }
+
+        if(strcmp(element->Name(), "Data") == 0)
+        {
+
+            for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
+            {
+                DrawnDataObject* ddo = new DrawnDataObject();
+                string ddoName = elementSubscribe->Attribute("name");
+                string ddoModel = elementSubscribe->Attribute("model");
+                string ddoPubOrSub = elementSubscribe->Attribute("pubOrSub");
+
+                ddo->name = ddoName;
+                foreach (DrawnModelObject* dmo, functionDrawnModels) {
+                    if(ddoModel == dmo->name)
+                        ddo->model = dmo;
+                }
+
+                ddo->pubOrSub = ddoPubOrSub;
+
+                functionDrawnData.append(ddo);
+            }
+        }
+
+    }
+
+    //Get current modified status of each variable from the respective ICD
+    ICD stdICD = ParseSingleStdIcd(cSTDLocation + QString::fromStdString(selectedICD.name) +
+                                   "/std" + QString::fromStdString(selectedICD.name) + ".xml");
 
     //ATTENTION : A thing of beauty
     foreach (DrawnDataObject* ddo, functionDrawnData)
@@ -2008,6 +2163,8 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
 
     ui->messageBrowser->topLevelItem(0)->addChildren(subItems);
     ui->messageBrowser->topLevelItem(1)->addChildren(pubItems);
+
+    ui->messageBrowser->sortItems(0, Qt::AscendingOrder);
 
     SetupDrawingArea();
     ResetScroll();
@@ -2626,7 +2783,7 @@ void MainWindow::onAddFunctionToTask()
 //            taskflowScene->addWidget(newTaskFunctionName);
 //            taskflowScene->addPolygon(arrowHead);
 
-            DrawnTaskFunctions* newTaskFunction = new DrawnTaskFunctions;
+            DrawnTaskFunction* newTaskFunction = new DrawnTaskFunction;
             newTaskFunction->name = fileName;
             newTaskFunction->dir = fileDir;
 //            newTaskFunction->line = line;
@@ -2670,7 +2827,7 @@ void MainWindow::onFunctionObjectClicked() //derived from onDataObjectClicked
     // Set the selection as #selected and find its dataObject
     taskflowSelectedButton->setStyleSheet("border: 2px solid #8f8f91");
 
-    foreach(DrawnTaskFunctions* dtf, taskflowDrawnFunctions)
+    foreach(DrawnTaskFunction* dtf, taskflowDrawnFunctions)
     {
         if(taskflowSelectedButton == dtf->label)
         {
@@ -2716,7 +2873,7 @@ void MainWindow::RedrawTaskflowScene()
     QPushButton *newTaskFunctionName;
     QPolygonF arrowHead;
 
-    foreach (DrawnTaskFunctions* dtf, taskflowDrawnFunctions) {
+    foreach (DrawnTaskFunction* dtf, taskflowDrawnFunctions) {
 
         CheckTaskflowSceneResize();
 
@@ -2749,10 +2906,22 @@ void MainWindow::RedrawTaskflowScene()
             newTaskFunctionName = new QPushButton(dtf->name);
             newTaskFunctionName->setText(dtf->name);
             newTaskFunctionName->setFlat(true);
-            newTaskFunctionName->setStyleSheet("text-align: left; padding: 0px;");
+
+            if(toggleTaskStyleOn)
+            {
+                if(dtf->modified == aModifiedStatus[eNotModified])
+                    newTaskFunctionName->setStyleSheet("color: rgba(0,0,0,1.0)");
+                else if(dtf->modified == aModifiedStatus[eModified])
+                    newTaskFunctionName->setStyleSheet("color: rgba(0,0,255,1.0)");
+                else
+                    newTaskFunctionName->setStyleSheet("color: rgba(0,0,0,1.0)");
+            }
+            else
+                newTaskFunctionName->setStyleSheet("color: rgba(0,0,0,1.0)");
+
             newTaskFunctionName->setFocusPolicy(Qt::NoFocus);
             int width = newTaskFunctionName->fontMetrics().boundingRect(newTaskFunctionName->text()).width();
-            newTaskFunctionName->move(midPoint.x() - width/2, midPoint.y()-30);
+            newTaskFunctionName->move(midPoint.x() - width/2 - 5, midPoint.y()-30);
             taskflowScene->addWidget(newTaskFunctionName);
 
             connect(newTaskFunctionName, SIGNAL(clicked()),
@@ -2802,7 +2971,7 @@ void MainWindow::onSaveTaskflowScene()
     printer.PushAttribute("name", taskTitle.toStdString().c_str());
 
     printer.OpenElement("Functions");
-    foreach (DrawnTaskFunctions* dtf, taskflowDrawnFunctions) {
+    foreach (DrawnTaskFunction* dtf, taskflowDrawnFunctions) {
         printer.OpenElement("Function");
         printer.PushAttribute("name", dtf->name.toStdString().c_str());
         printer.PushAttribute("dir", dtf->dir.toStdString().c_str());
@@ -2847,7 +3016,7 @@ void MainWindow::onLoadTaskflowScene()
         {
             for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
             {
-                DrawnTaskFunctions* dtf = new DrawnTaskFunctions();
+                DrawnTaskFunction* dtf = new DrawnTaskFunction();
                 QString dmoName = elementSubscribe->Attribute("name");
                 QString dmoParsedName = elementSubscribe->Attribute("dir");
 
@@ -2855,6 +3024,22 @@ void MainWindow::onLoadTaskflowScene()
                 dtf->dir = dmoParsedName;
 
                 taskflowDrawnFunctions.append(dtf);
+            }
+        }
+    }
+
+    foreach (DrawnTaskFunction* dtf, taskflowDrawnFunctions) {
+        if(dtf->dir != "")
+        {
+            LoadCustomFunctionScene(dtf->dir);
+            foreach (DrawnDataObject* ddo, functionDrawnData) {
+                if(ddo->modified == aModifiedStatus[eModified] ||
+                        ddo->modified == aModifiedStatus[eAdded] ||
+                        ddo->modified == aModifiedStatus[eRemoved])
+                {
+                    dtf->modified = aModifiedStatus[eModified];
+                    break;
+                }
             }
         }
     }
@@ -3994,13 +4179,17 @@ void MainWindow::onFunctionDropdownMenuClicked(QAction * _action)
 
     if(_action->text()=="Delete")
     {
-        if(functionSelectedDataObject->model != NULL)
+        if(functionSelectedDataObject->pubOrSub != "" &&
+                functionSelectedDataObject->pubOrSub != "pilot")
         {
-            functionSelectedDataObject->model->linkedDataObjects--;
-            if(functionSelectedDataObject->model->linkedDataObjects<1)
+            if(functionSelectedDataObject->model != NULL)
             {
-                functionDrawnModels.remove(functionDrawnModels.indexOf(functionSelectedDataObject->model));
-                functionHorizontalSpacing -= cHorizontalSpacing;
+                functionSelectedDataObject->model->linkedDataObjects--;
+                if(functionSelectedDataObject->model->linkedDataObjects<1)
+                {
+                    functionDrawnModels.remove(functionDrawnModels.indexOf(functionSelectedDataObject->model));
+                    functionHorizontalSpacing -= cHorizontalSpacing;
+                }
             }
         }
 
@@ -4037,6 +4226,120 @@ void MainWindow::onFunctionDropdownMenuClicked(QAction * _action)
             functionDrawnData.replace(tempLocation+1, tempObject);
         }
     }
+    else if(_action->text()=="Accept Change")
+    {
+        functionSelectedDataObject->accepted = aAcceptedStatus[eAccepted];
+
+        if(functionSelectedDataObject->pubOrSub == "sub")
+        {
+            foreach (SubMessage* sm, selectedICD.v_pSubscribedMessages) {
+                if(functionSelectedDataObject->name == sm->sMicd ||
+                        functionSelectedDataObject->name == sm->sMmessage)
+                {
+                    sm->sMaccepted = aAcceptedStatus[eAccepted];
+                    break;
+                }
+            }
+        }
+        else if(functionSelectedDataObject->pubOrSub == "pub")
+        {
+            foreach (PubMessage* pm, selectedICD.v_pPublishedMessages) {
+                if(functionSelectedDataObject->name == pm->pMname)
+                {
+                    pm->pMaccepted= aAcceptedStatus[eAccepted];
+                    break;
+                }
+                else
+                {
+                    foreach (MessageParameter* mp, pm->v_pPubMparameters) {
+                        if(functionSelectedDataObject->name == mp->pMname)
+                        {
+                            mp->pMaccepted = aAcceptedStatus[eAccepted];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        SaveOneXML(selectedICD);
+    }
+    else if(_action->text()=="Reject Change")
+    {
+        functionSelectedDataObject->accepted = aAcceptedStatus[eRejected];
+
+        if(functionSelectedDataObject->pubOrSub == "sub")
+        {
+            foreach (SubMessage* sm, selectedICD.v_pSubscribedMessages) {
+                if(functionSelectedDataObject->name == sm->sMicd ||
+                        functionSelectedDataObject->name == sm->sMmessage)
+                {
+                    sm->sMaccepted = aAcceptedStatus[eRejected];
+                    break;
+                }
+            }
+        }
+        else if(functionSelectedDataObject->pubOrSub == "pub")
+        {
+            foreach (PubMessage* pm, selectedICD.v_pPublishedMessages) {
+                if(functionSelectedDataObject->name == pm->pMname)
+                {
+                    pm->pMaccepted= aAcceptedStatus[eRejected];
+                    break;
+                }
+                else
+                {
+                    foreach (MessageParameter* mp, pm->v_pPubMparameters) {
+                        if(functionSelectedDataObject->name == mp->pMname)
+                        {
+                            mp->pMaccepted = aAcceptedStatus[eRejected];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        SaveOneXML(selectedICD);
+    }
+    else if(_action->text()=="Change to be Assessed")
+    {
+        functionSelectedDataObject->accepted = aAcceptedStatus[eToBeAssessed];
+
+        if(functionSelectedDataObject->pubOrSub == "sub")
+        {
+            foreach (SubMessage* sm, selectedICD.v_pSubscribedMessages) {
+                if(functionSelectedDataObject->name == sm->sMicd ||
+                        functionSelectedDataObject->name == sm->sMmessage)
+                {
+                    sm->sMaccepted = aAcceptedStatus[eToBeAssessed];
+                    break;
+                }
+            }
+        }
+        else if(functionSelectedDataObject->pubOrSub == "pub")
+        {
+            foreach (PubMessage* pm, selectedICD.v_pPublishedMessages) {
+                if(functionSelectedDataObject->name == pm->pMname)
+                {
+                    pm->pMaccepted= aAcceptedStatus[eToBeAssessed];
+                    break;
+                }
+                else
+                {
+                    foreach (MessageParameter* mp, pm->v_pPubMparameters) {
+                        if(functionSelectedDataObject->name == mp->pMname)
+                        {
+                            mp->pMaccepted = aAcceptedStatus[eToBeAssessed];
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        SaveOneXML(selectedICD);
+    }
 
     functionSelectedButton = NULL;
     functionSelectedDataObject = NULL;
@@ -4066,7 +4369,7 @@ void MainWindow::onTaskflowDropdownMenuClicked(QAction * _action)
             ui->statusBar->showMessage("ERROR: Can't move any further up");
         else
         {
-            DrawnTaskFunctions* tempObject = taskflowDrawnFunctions.at(tempLocation);
+            DrawnTaskFunction* tempObject = taskflowDrawnFunctions.at(tempLocation);
             taskflowDrawnFunctions.replace(tempLocation, taskflowDrawnFunctions.at(tempLocation-1));
             taskflowDrawnFunctions.replace(tempLocation-1, tempObject);
         }
@@ -4078,71 +4381,15 @@ void MainWindow::onTaskflowDropdownMenuClicked(QAction * _action)
             ui->statusBar->showMessage("ERROR: Can't move any further down");
         else
         {
-            DrawnTaskFunctions* tempObject = taskflowDrawnFunctions.at(tempLocation);
+            DrawnTaskFunction* tempObject = taskflowDrawnFunctions.at(tempLocation);
             taskflowDrawnFunctions.replace(tempLocation, taskflowDrawnFunctions.at(tempLocation+1));
             taskflowDrawnFunctions.replace(tempLocation+1, tempObject);
         }
     }
     else if(_action->text()=="View Function")
     {
-        //LOTS OF DUPLICATED CODE
-        functionDrawnModels.clear();
-        functionDrawnData.clear();
-        functionTitle.clear();
-        functionSelectedButton = NULL;
-        functionSelectedDataObject = NULL;
-
-        QString fileName = taskflowSelectedFunctionObject->dir;
-        XMLDocument doc;
-        doc.LoadFile( fileName.toStdString().c_str() );
-        XMLElement* root = doc.FirstChildElement();
-        functionTitle = root->Attribute("name");
-
-        for(XMLElement* element = root->FirstChildElement(); element != NULL; element = element->NextSiblingElement())
-        {
-            if(strcmp(element->Name(), "Models") == 0)
-            {
-                for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
-                {
-                    DrawnModelObject* dmo = new DrawnModelObject();
-                    string dmoName = elementSubscribe->Attribute("name");
-                    string dmoParsedName = elementSubscribe->Attribute("parsedName");
-
-                    dmo->name = dmoName;
-                    dmo->parsedName= dmoParsedName;
-
-                    functionDrawnModels.append(dmo);
-                }
-            }
-
-            if(strcmp(element->Name(), "Data") == 0)
-            {
-
-                for(XMLElement* elementSubscribe = element->FirstChildElement(); elementSubscribe != NULL; elementSubscribe = elementSubscribe->NextSiblingElement())
-                {
-                    DrawnDataObject* ddo = new DrawnDataObject();
-                    string ddoName = elementSubscribe->Attribute("name");
-                    string ddoModel = elementSubscribe->Attribute("model");
-                    string ddoPubOrSub = elementSubscribe->Attribute("pubOrSub");
-
-                    ddo->name = ddoName;
-                    foreach (DrawnModelObject* dmo, functionDrawnModels) {
-                        if(ddoModel == dmo->name)
-                            ddo->model = dmo;
-                    }
-
-                    ddo->pubOrSub = ddoPubOrSub;
-
-                    functionDrawnData.append(ddo);
-                }
-            }
-
-        }
-
-        ui->statusBar->showMessage("Loading Complete");
-        RedrawFunctionScene();
+        LoadCustomFunctionScene(taskflowSelectedFunctionObject->dir);
         ui->tabWidget->setCurrentIndex(1);
-        onHomeTriggered();
     }
     taskflowSelectedButton = NULL;
     taskflowSelectedFunctionObject = NULL;

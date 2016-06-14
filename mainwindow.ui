@@ -290,6 +290,7 @@
     </property>
     <addaction name="actionSave_Function"/>
     <addaction name="actionLoad_Function"/>
+    <addaction name="actionToggle_Function_Style"/>
    </widget>
    <widget class="QMenu" name="menuXMLs">
     <property name="title">
@@ -320,6 +321,7 @@
     <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
     <addaction name="actionSave_As"/>
+    <addaction name="actionToggle_Task_Style"/>
    </widget>
    <addaction name="menuFunctions"/>
    <addaction name="menuTasks"/>
@@ -361,6 +363,9 @@
    </property>
   </action>
   <action name="actionNew">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="text">
     <string>New...</string>
    </property>
@@ -406,6 +411,16 @@
   <action name="actionCheck_for_ICD_Changes">
    <property name="text">
     <string>Check for ICD Changes</string>
+   </property>
+  </action>
+  <action name="actionToggle_Function_Style">
+   <property name="text">
+    <string>Toggle Style On/Off</string>
+   </property>
+  </action>
+  <action name="actionToggle_Task_Style">
+   <property name="text">
+    <string>Toggle Style On/Off</string>
    </property>
   </action>
  </widget>

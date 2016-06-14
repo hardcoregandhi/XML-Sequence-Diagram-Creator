@@ -237,13 +237,15 @@ struct DrawnDataObject{
     int posY;
 };
 
-struct DrawnTaskFunctions{
+struct DrawnTaskFunction{
 
     QString name;
     QString dir;
     QLineF line;
     QPolygonF arrowPoly;
     QPushButton* label;
+    std::string modified;
+    std::string accepted;
 };
 
 //const char* aAcceptedStatus[] ={"eToBeAssessed", "eAccepted","eRejected"};
@@ -284,6 +286,7 @@ public:
     void RedrawFunctionScene();
     void SaveFunctionScene();
     void LoadFunctionScene();
+    void LoadCustomFunctionScene(QString _fileName);
 
     void RedrawTaskflowScene();
 
@@ -306,6 +309,7 @@ public slots:
     void onTaskflowDropdownMenuClicked(QAction*_action);
     void onSaveTaskflowScene();
     void onLoadTaskflowScene();
+    void onNewTaskflowScene()   { SetupTaskflowScene();         }
     void onTabChange(int _tab);
     void onCheckforChanges();
     void onHomeAllTriggered()   { ResetScroll();                }
@@ -317,12 +321,20 @@ public slots:
     void onParseStockXmls()     { ParseStockIcds();
                                   SetupMessageBrowser();
                                   SetupIcdMenu();               }
-    void onSaveXmlChanges()     { SaveAllXMLs();    }
+    void onSaveXmlChanges()     { SaveAllXMLs();                }
 
     void onSaveToJPG();
     void onRevertToStockIcds()  { ParseStockIcds();
                                   SaveAllXMLs();
                                   onParseStdXmls();             }
+    void onToggleFunctionStyle(){ toggleFunctionStyleOn =
+                                    !toggleFunctionStyleOn;
+                                  RedrawFunctionScene();        }
+    void onToggleTaskStyle()    { toggleTaskStyleOn =
+                                    !toggleTaskStyleOn;
+
+                                  RedrawTaskflowScene();        }
+
 
 
 private:
@@ -356,15 +368,17 @@ private:
     QString functionTitle;
     DrawnModelObject* pilotModelObject;
     DrawnModelObject* targetModelObject;
+    bool toggleFunctionStyleOn;
 
     QGraphicsScene* taskflowScene;
-    QVector<DrawnTaskFunctions*> taskflowDrawnFunctions;
+    QVector<DrawnTaskFunction*> taskflowDrawnFunctions;
     int taskflowVerticalSpacing;
     int sceneTaskflowVerticalSizing;
     QMenu* taskflowDropdownMenu;
     QPushButton* taskflowSelectedButton;
-    DrawnTaskFunctions* taskflowSelectedFunctionObject;
+    DrawnTaskFunction* taskflowSelectedFunctionObject;
     QString taskTitle;
+    bool toggleTaskStyleOn;
 };
 
 #endif // MAINWINDOW_H
