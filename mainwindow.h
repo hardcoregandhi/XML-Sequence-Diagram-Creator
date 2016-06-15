@@ -30,8 +30,6 @@ enum ModifiedStatus
     eModified = 3
 };
 
-//std::map<AcceptedStatus, std::string> acceptedStatusMap = {{eNotModified, "eNotModified"}, {eRemoved, "eRemoved"}, {eAdded, "eAdded"}, {eModified, "eModified"}};
-
 struct SubMessage{
     std::string sMicd;
     std::string sMmessage;
@@ -337,6 +335,8 @@ public slots:
 
     void onHorizontalSpacing();
     void onVerticalSpacing();
+    void onFunctionComments();
+    void onTaskComments();
 
 private:
     QVector<ICD> v_ICDs;
@@ -370,6 +370,7 @@ private:
     DrawnModelObject* pilotModelObject;
     DrawnModelObject* targetModelObject;
     bool toggleFunctionStyleOn;
+    QString functionComments;
 
     QGraphicsScene* taskflowScene;
     QVector<DrawnTaskFunction*> taskflowDrawnFunctions;
@@ -380,6 +381,7 @@ private:
     DrawnTaskFunction* taskflowSelectedFunctionObject;
     QString taskTitle;
     bool toggleTaskStyleOn;
+    QString taskComments;
 };
 
 #endif // MAINWINDOW_H

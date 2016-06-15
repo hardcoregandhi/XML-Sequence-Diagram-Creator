@@ -283,7 +283,7 @@
    </property>
    <widget class="QMenu" name="menuFunctions">
     <property name="enabled">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="title">
      <string>Function</string>
@@ -299,6 +299,7 @@
     <addaction name="actionLoad_Function"/>
     <addaction name="actionToggle_Function_Style"/>
     <addaction name="menuSpacing"/>
+    <addaction name="actionFunctionComments"/>
    </widget>
    <widget class="QMenu" name="menuXMLs">
     <property name="title">
@@ -321,7 +322,7 @@
    </widget>
    <widget class="QMenu" name="menuTasks">
     <property name="enabled">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="title">
      <string>Tasks</string>
@@ -330,6 +331,7 @@
     <addaction name="actionOpen"/>
     <addaction name="actionSave_As"/>
     <addaction name="actionToggle_Task_Style"/>
+    <addaction name="actionTaskComments"/>
    </widget>
    <addaction name="menuFunctions"/>
    <addaction name="menuTasks"/>
@@ -439,6 +441,16 @@
   <action name="actionVertical_Spacing">
    <property name="text">
     <string>Vertical Spacing</string>
+   </property>
+  </action>
+  <action name="actionFunctionComments">
+   <property name="text">
+    <string>Comments</string>
+   </property>
+  </action>
+  <action name="actionTaskComments">
+   <property name="text">
+    <string>Comments</string>
    </property>
   </action>
  </widget>

@@ -114,6 +114,10 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onHorizontalSpacing()));
     connect(ui->actionVertical_Spacing, SIGNAL(triggered()),this,
               SLOT(onVerticalSpacing()));
+    connect(ui->actionFunctionComments, SIGNAL(triggered()),this,
+              SLOT(onFunctionComments()));
+    connect(ui->actionTaskComments, SIGNAL(triggered()),this,
+              SLOT(onTaskComments()));
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -916,6 +920,7 @@ void MainWindow::SetupTaskflowScene()
     taskTitle.clear();
     taskflowSelectedButton = NULL;
     taskflowSelectedFunctionObject = NULL;
+    taskComments = "";
 
     DrawnTaskFunction* startObject = new DrawnTaskFunction;
     startObject->name = "startObject";
@@ -1707,6 +1712,26 @@ void MainWindow::onVerticalSpacing()
     RedrawFunctionScene();
 }
 
+void MainWindow::onFunctionComments()
+{
+    bool ok;
+    QString text = QInputDialog::getMultiLineText(this, tr("Function Comments"),
+                                                  tr("Name\tComment:"), functionComments, &ok);
+
+    if (ok && !text.isEmpty())
+        functionComments = text;
+}
+
+void MainWindow::onTaskComments()
+{
+    bool ok;
+    QString text = QInputDialog::getMultiLineText(this, tr("Task Comments"),
+                                                  tr("Name\tComment:"), taskComments, &ok);
+
+    if (ok && !text.isEmpty())
+        taskComments = text;
+}
+
 void MainWindow::RedrawFunctionScene()
 {
     pilotModelObject = functionDrawnModels[0];
@@ -1866,6 +1891,11 @@ void MainWindow::SaveFunctionScene()
         printer.CloseElement();
     }
     printer.CloseElement();
+
+    printer.OpenElement("Comments");
+    printer.PushAttribute("comments", functionComments.toStdString().c_str());
+    printer.CloseElement();
+
     printer.CloseElement();
 
     diagram.Print(&printer);
@@ -1938,6 +1968,12 @@ void MainWindow::LoadFunctionScene()
             }
         }
 
+        if(strcmp(element->Name(), "Comments") == 0)
+        {
+                string comment = element->Attribute("comments");
+
+                functionComments = QString::fromStdString(comment);
+        }
     }
 
     //Get current modified status of each variable from the respective ICD
@@ -2134,6 +2170,7 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     sceneUnsortedVerticalSizing = 2500;
     sceneFunctionHorizontalSizing = 2500;
     sceneFunctionVerticalSizing = 2500;
+    functionComments = "";
 
     //find the icd and draw its unsorted diagram
     const char* selectedEntry = _item->text().toUtf8().constData();
@@ -2741,7 +2778,7 @@ void MainWindow::onRenameFunction()
         bool ok;
         QString text = QInputDialog::getText(this, tr("Rename Function"),
                                              tr("New Function Name:"), QLineEdit::Normal,
-                                             QDir::home().dirName(), &ok);
+                                             functionTitle, &ok);
         if (ok && !text.isEmpty())
         {
             functionTitle = text;
@@ -2753,7 +2790,7 @@ void MainWindow::onRenameFunction()
         bool ok;
         QString text = QInputDialog::getText(this, tr("Rename Task"),
                                              tr("New Task Name:"), QLineEdit::Normal,
-                                             QDir::home().dirName(), &ok);
+                                             taskTitle, &ok);
         if (ok && !text.isEmpty())
         {
             taskTitle = text;
@@ -3005,6 +3042,10 @@ void MainWindow::onSaveTaskflowScene()
     }
     printer.CloseElement();
 
+    printer.OpenElement("Comments");
+    printer.PushAttribute("comments", taskComments.toStdString().c_str());
+    printer.CloseElement();
+
     printer.CloseElement();
 
     diagram.Print(&printer);
@@ -3051,6 +3092,13 @@ void MainWindow::onLoadTaskflowScene()
 
                 taskflowDrawnFunctions.append(dtf);
             }
+        }
+
+        if(strcmp(element->Name(), "Comments") == 0)
+        {
+                string comment = element->Attribute("comments");
+
+                taskComments = QString::fromStdString(comment);
         }
     }
 
