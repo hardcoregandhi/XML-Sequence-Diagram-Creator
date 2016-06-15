@@ -26,8 +26,8 @@ using namespace tinyxml2;
 
 const int cClassLineLength = 2500;
 const int cSceneSizeIncrement = 2500;
-const int cHorizontalSpacing = 150; //steps
-const int cVerticalSpacing = 30; //steps
+int cHorizontalSpacing = 150; //steps
+int cVerticalSpacing = 30; //steps
 const int cTaskflowHorizontalMidpoint = 200;
 const int cTaskflowVerticalSpacing = 100;
 const QString cIcdLocation = "/home/jryan/simulation/dev/common/icd/";
@@ -105,11 +105,15 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(ui->actionCheck_for_ICD_Changes, SIGNAL(triggered()),this,
               SLOT(onCheckforChanges()));
     connect(ui->actionRevert_to_stock_ICDs, SIGNAL(triggered()),this,
-              SLOT(onRevertToStockIcds()) );
+              SLOT(onRevertToStockIcds()));
     connect(ui->actionToggle_Function_Style, SIGNAL(triggered()),this,
-              SLOT(onToggleFunctionStyle()) );
+              SLOT(onToggleFunctionStyle()));
     connect(ui->actionToggle_Task_Style, SIGNAL(triggered()),this,
-              SLOT(onToggleTaskStyle()) );
+              SLOT(onToggleTaskStyle()));
+    connect(ui->actionHorizontal_Spacing, SIGNAL(triggered()),this,
+              SLOT(onHorizontalSpacing()));
+    connect(ui->actionVertical_Spacing, SIGNAL(triggered()),this,
+              SLOT(onVerticalSpacing()));
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -1679,6 +1683,28 @@ void MainWindow::CheckTaskflowSceneResize()
         sceneTaskflowVerticalSizing += 600;
     }
     taskflowScene->setSceneRect(0,0,600,sceneTaskflowVerticalSizing);
+}
+
+void MainWindow::onHorizontalSpacing()
+{
+    bool ok;
+    int i = QInputDialog::getInt(this, tr("Enter your new horizontal spacing value"),
+                                    tr("Spacing:"), cHorizontalSpacing, 50, 500, 5, &ok);
+    if (ok)
+        cHorizontalSpacing = i;
+
+    RedrawFunctionScene();
+}
+
+void MainWindow::onVerticalSpacing()
+{
+    bool ok;
+    int i = QInputDialog::getInt(this, tr("Enter your new vertical spacing value"),
+                                    tr("Spacing:"), cVerticalSpacing, 10, 100, 2, &ok);
+    if (ok)
+        cVerticalSpacing = i;
+
+    RedrawFunctionScene();
 }
 
 void MainWindow::RedrawFunctionScene()

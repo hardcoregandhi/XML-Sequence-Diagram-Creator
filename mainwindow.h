@@ -335,7 +335,8 @@ public slots:
 
                                   RedrawTaskflowScene();        }
 
-
+    void onHorizontalSpacing();
+    void onVerticalSpacing();
 
 private:
     QVector<ICD> v_ICDs;

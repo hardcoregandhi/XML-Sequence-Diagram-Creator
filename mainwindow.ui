@@ -288,9 +288,17 @@
     <property name="title">
      <string>Function</string>
     </property>
+    <widget class="QMenu" name="menuSpacing">
+     <property name="title">
+      <string>Spacing...</string>
+     </property>
+     <addaction name="actionHorizontal_Spacing"/>
+     <addaction name="actionVertical_Spacing"/>
+    </widget>
     <addaction name="actionSave_Function"/>
     <addaction name="actionLoad_Function"/>
     <addaction name="actionToggle_Function_Style"/>
+    <addaction name="menuSpacing"/>
    </widget>
    <widget class="QMenu" name="menuXMLs">
     <property name="title">
@@ -421,6 +429,16 @@
   <action name="actionToggle_Task_Style">
    <property name="text">
     <string>Toggle Style On/Off</string>
+   </property>
+  </action>
+  <action name="actionHorizontal_Spacing">
+   <property name="text">
+    <string>Horizontal Spacing</string>
+   </property>
+  </action>
+  <action name="actionVertical_Spacing">
+   <property name="text">
+    <string>Vertical Spacing</string>
    </property>
   </action>
  </widget>
