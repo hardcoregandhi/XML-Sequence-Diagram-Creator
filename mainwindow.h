@@ -337,6 +337,8 @@ public slots:
     void onVerticalSpacing();
     void onFunctionComments();
     void onTaskComments();
+    void onRejectAllMods();
+    void onAcceptAllMods();
 
 private:
     QVector<ICD> v_ICDs;

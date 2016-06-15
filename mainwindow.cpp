@@ -118,6 +118,10 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onFunctionComments()));
     connect(ui->actionTaskComments, SIGNAL(triggered()),this,
               SLOT(onTaskComments()));
+    connect(ui->actionAccept_all_modifications, SIGNAL(triggered()),this,
+              SLOT(onAcceptAllMods()));
+    connect(ui->actionReject_all_modification, SIGNAL(triggered()),this,
+              SLOT(onRejectAllMods()));
 
     ui->statusBar->showMessage(QString::number(ui->graphicsView->verticalScrollBar()->value()) + " " + QString::number(ui->graphicsView->horizontalScrollBar()->value()));
 }
@@ -1730,6 +1734,71 @@ void MainWindow::onTaskComments()
 
     if (ok && !text.isEmpty())
         taskComments = text;
+}
+
+void MainWindow::onAcceptAllMods()
+{
+    QMessageBox::StandardButton resBtn = QMessageBox::question( this, "Accept all Modifications",
+                                                                tr("Are you sure you wish to reject every modification in this ICD? \n"
+                                                                   "This will overwrite any previous status"),
+                                                                QMessageBox::Cancel | QMessageBox::Yes,
+                                                                QMessageBox::Yes);
+    if (resBtn == QMessageBox::Yes)
+    {
+        foreach (SubMessage* sm, selectedICD.v_pSubscribedMessages) {
+            sm->sMaccepted = aAcceptedStatus[eAccepted];
+        }
+        foreach (PubMessage* pm, selectedICD.v_pPublishedMessages) {
+            pm->pMaccepted = aAcceptedStatus[eAccepted];
+            foreach (MessageParameter* mp, pm->v_pPubMparameters) {
+                mp->pMaccepted = aAcceptedStatus[eAccepted];
+            }
+        }
+        foreach (Enum* en, selectedICD.v_pEnums) {
+            foreach (EnumValue* env, en->v_pEnumValues) {
+                env->eNValaccepted = aAcceptedStatus[eAccepted];
+            }
+        }
+        foreach (Struct* str, selectedICD.v_pStructs) {
+            foreach (StructParameter* strp, str->v_pStructParameters) {
+                strp->sPaccepted = aAcceptedStatus[eAccepted];
+            }
+        }
+    }
+
+    SaveOneXML(selectedICD);
+}
+
+void MainWindow::onRejectAllMods() {
+    QMessageBox::StandardButton resBtn = QMessageBox::question( this, "Reject all Modifications",
+                                                                tr("Are you sure you wish to reject every modification in this ICD? \n"
+                                                                   "This will overwrite any previous status"),
+                                                                QMessageBox::Cancel | QMessageBox::Yes,
+                                                                QMessageBox::Yes);
+    if (resBtn == QMessageBox::Yes)
+    {
+        foreach (SubMessage* sm, selectedICD.v_pSubscribedMessages) {
+            sm->sMaccepted = aAcceptedStatus[eRejected];
+        }
+        foreach (PubMessage* pm, selectedICD.v_pPublishedMessages) {
+            pm->pMaccepted = aAcceptedStatus[eRejected];
+            foreach (MessageParameter* mp, pm->v_pPubMparameters) {
+                mp->pMaccepted = aAcceptedStatus[eRejected];
+            }
+        }
+        foreach (Enum* en, selectedICD.v_pEnums) {
+            foreach (EnumValue* env, en->v_pEnumValues) {
+                env->eNValaccepted = aAcceptedStatus[eRejected];
+            }
+        }
+        foreach (Struct* str, selectedICD.v_pStructs) {
+            foreach (StructParameter* strp, str->v_pStructParameters) {
+                strp->sPaccepted = aAcceptedStatus[eRejected];
+            }
+        }
+    }
+
+    SaveOneXML(selectedICD);
 }
 
 void MainWindow::RedrawFunctionScene()

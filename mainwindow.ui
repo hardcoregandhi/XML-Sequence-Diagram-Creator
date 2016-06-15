@@ -310,6 +310,9 @@
     <addaction name="actionSave_XML_Changes"/>
     <addaction name="actionCheck_for_ICD_Changes"/>
     <addaction name="actionRevert_to_stock_ICDs"/>
+    <addaction name="separator"/>
+    <addaction name="actionAccept_all_modifications"/>
+    <addaction name="actionReject_all_modification"/>
    </widget>
    <widget class="QMenu" name="menuDiagram">
     <property name="title">
@@ -451,6 +454,16 @@
   <action name="actionTaskComments">
    <property name="text">
     <string>Comments</string>
+   </property>
+  </action>
+  <action name="actionAccept_all_modifications">
+   <property name="text">
+    <string>Accept all modifications</string>
+   </property>
+  </action>
+  <action name="actionReject_all_modification">
+   <property name="text">
+    <string>Reject all modifications</string>
    </property>
   </action>
  </widget>
