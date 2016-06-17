@@ -283,7 +283,7 @@
    </property>
    <widget class="QMenu" name="menuFunctions">
     <property name="enabled">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <property name="title">
      <string>Function</string>
@@ -325,7 +325,7 @@
    </widget>
    <widget class="QMenu" name="menuTasks">
     <property name="enabled">
-     <bool>true</bool>
+     <bool>false</bool>
     </property>
     <property name="title">
      <string>Tasks</string>
