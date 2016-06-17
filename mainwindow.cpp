@@ -1053,8 +1053,6 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
     //Draw Subscribed data
     foreach (SubMessage* sMsg, _icd.v_pSubscribedMessages) {
 
-        CheckUnsortedSceneResize();
-
         bool newModelToBeDrawn = true;
         DrawnModelObject* newModelObject = new DrawnModelObject;
 
@@ -1074,6 +1072,7 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
             QRectF newIcdRect = QRect(horizontalSpacing,50,100,50);
 
             horizontalSpacing += cHorizontalSpacing;
+            CheckUnsortedSceneResize();
 
             QPointF midPoint = QLineF(newIcdRect.bottomLeft(),newIcdRect.bottomRight()).pointAt(0.5);
             QLineF modelLine = QLineF(midPoint, midPoint);
@@ -1109,6 +1108,7 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
         icdScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
 
         verticalSpacing+= 30;
+        CheckUnsortedSceneResize();
 
         //Draw Labels
         QPushButton *newDataName = new QPushButton(tr(sMsg->sMmessage.c_str()));
@@ -1130,8 +1130,6 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
 
     //Draw Published data
     foreach (PubMessage* pMsg, _icd.v_pPublishedMessages) {
-
-        CheckUnsortedSceneResize();
 
         bool newModelToBeDrawn = true;
 
@@ -1158,9 +1156,6 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
 
             QRectF newIcdRect = QRect(horizontalSpacing, 50, 100, 50);
 
-//            if (horizontalSpacing >2000)
-//                icdScene->setSceneRect(0,0,5000,3500);
-
             QPointF midPoint = QLineF(newIcdRect.bottomLeft(),newIcdRect.bottomRight()).pointAt(0.5);
             QLineF modelLine = QLineF(midPoint, midPoint);
             modelLine.setP2(QPointF(midPoint.x(),midPoint.y()+cClassLineLength));
@@ -1181,6 +1176,7 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
             drawnModels.append(newModelObject);
 
             horizontalSpacing += 150;
+            CheckUnsortedSceneResize();
         }
 
         //Draw Arrows
@@ -1198,6 +1194,7 @@ void MainWindow::DrawUnsortedDiagram(ICD _icd)
         icdScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
 
         verticalSpacing+= 30;
+        CheckUnsortedSceneResize();
 
         //Draw Labels
         QPushButton *newDataName = new QPushButton(tr(pMsg->pMname.c_str()));
@@ -1226,16 +1223,16 @@ void MainWindow::SetupDrawingArea()
     verticalSpacing = 150;
     functionHorizontalSpacing = 350;
     functionVerticalSpacing = 150;
-    sceneUnsortedHorizontalSizing = 2500;
-    sceneUnsortedVerticalSizing = 2500;
-    sceneFunctionHorizontalSizing = 2500;
-    sceneFunctionVerticalSizing = 2500;
+    sceneUnsortedHorizontalSizing = 500;
+    sceneUnsortedVerticalSizing = 500;
+    sceneFunctionHorizontalSizing = 500;
+    sceneFunctionVerticalSizing = 500;
     taskflowVerticalSpacing = 100;
     sceneTaskflowVerticalSizing = 1000;
 
     if(icdScene)
     {
-        icdScene->setSceneRect(0,0,2500,2500);
+        icdScene->setSceneRect(0,0,sceneUnsortedHorizontalSizing,sceneUnsortedVerticalSizing);
         ui->graphicsView->setScene(icdScene);
         ui->graphicsView->setBackgroundBrush(Qt::white);
 
@@ -1281,7 +1278,7 @@ void MainWindow::SetupDrawingArea()
         functionDrawnData.clear();
         ui->functionsGraphicsView->items().clear();
         functionScene = new QGraphicsScene();
-        functionScene->setSceneRect(0,0,2500,2500);
+        functionScene->setSceneRect(0,0,sceneFunctionHorizontalSizing, sceneFunctionVerticalSizing);
         ui->functionsGraphicsView->setScene(functionScene);
         ui->functionsGraphicsView->setBackgroundBrush(Qt::white);
 
@@ -1659,10 +1656,9 @@ QPolygonF MainWindow::CreateTaskArrowHead(QLineF arrowLine)
 
 void MainWindow::CheckFunctionSceneResize()
 {
-    if(functionHorizontalSpacing > sceneFunctionHorizontalSizing)
+    if(functionHorizontalSpacing + 150 > sceneFunctionHorizontalSizing)
     {
         sceneFunctionHorizontalSizing += cSceneSizeIncrement;
-
     }
     if(functionVerticalSpacing > sceneFunctionVerticalSizing)
     {
@@ -1673,10 +1669,9 @@ void MainWindow::CheckFunctionSceneResize()
 
 void MainWindow::CheckUnsortedSceneResize()
 {
-    if(horizontalSpacing > sceneUnsortedHorizontalSizing)
+    if(horizontalSpacing + 150 > sceneUnsortedHorizontalSizing)
     {
         sceneUnsortedHorizontalSizing += cSceneSizeIncrement;
-
     }
     if(verticalSpacing > sceneUnsortedVerticalSizing)
     {
@@ -1810,12 +1805,14 @@ void MainWindow::RedrawFunctionScene()
     functionVerticalSpacing = 150;
     functionSelectedButton = NULL;
     functionSelectedDataObject = NULL;
+    sceneFunctionHorizontalSizing = 500;
+    sceneFunctionVerticalSizing = 500;
 
     functionScene->clear();
     functionScene->clear();
     functionScene->clear();
     functionScene = new QGraphicsScene();
-    functionScene->setSceneRect(0,0,2500,2500);
+    functionScene->setSceneRect(0,0,sceneFunctionHorizontalSizing, sceneFunctionVerticalSizing);
     ui->functionsGraphicsView->setScene(functionScene);
     ui->functionsGraphicsView->setBackgroundBrush(Qt::white);
 
@@ -1831,8 +1828,6 @@ void MainWindow::RedrawFunctionScene()
     functionScene->addWidget(DiagramTitle);
 
     foreach (DrawnModelObject* dmo, functionDrawnModels) { 
-
-        CheckFunctionSceneResize();
 
         dmo->rect.setY(50);
         dmo->rect.setX(functionHorizontalSpacing);
@@ -1855,12 +1850,10 @@ void MainWindow::RedrawFunctionScene()
         functionScene->addWidget(tempLabel);
 
         functionHorizontalSpacing += cHorizontalSpacing;
+        CheckFunctionSceneResize();
     }
 
     foreach (DrawnDataObject* doo, functionDrawnData) {
-
-        CheckFunctionSceneResize();
-
 
         if(doo->pubOrSub == "pub"){
             doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, targetModelObject->line.p1().x(), functionVerticalSpacing);
@@ -1914,6 +1907,7 @@ void MainWindow::RedrawFunctionScene()
                     this, SLOT(onDataObjectClicked()));
 
         functionVerticalSpacing += cVerticalSpacing;
+        CheckFunctionSceneResize();
     }
 }
 
@@ -1921,14 +1915,14 @@ void MainWindow::ResetFunctionScene()
 {
     functionHorizontalSpacing = 350;
     functionVerticalSpacing = 150;
-    sceneFunctionHorizontalSizing = 2500;
-    sceneFunctionVerticalSizing = 2500;
+    sceneFunctionHorizontalSizing = 500;
+    sceneFunctionVerticalSizing = 500;
 
     functionDrawnModels.clear();
     functionDrawnData.clear();
     ui->functionsGraphicsView->items().clear();
     functionScene = new QGraphicsScene();
-    functionScene->setSceneRect(0,0,2500,2500);
+    functionScene->setSceneRect(0,0,sceneFunctionHorizontalSizing, sceneFunctionVerticalSizing);
     ui->functionsGraphicsView->setScene(functionScene);
     ui->functionsGraphicsView->setBackgroundBrush(Qt::white);
 
@@ -2316,10 +2310,10 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     verticalSpacing = 150;
     functionHorizontalSpacing = 350;
     functionVerticalSpacing = 150;
-    sceneUnsortedHorizontalSizing = 2500;
-    sceneUnsortedVerticalSizing = 2500;
-    sceneFunctionHorizontalSizing = 2500;
-    sceneFunctionVerticalSizing = 2500;
+    sceneUnsortedHorizontalSizing = 500;
+    sceneUnsortedVerticalSizing = 500;
+    sceneFunctionHorizontalSizing = 500;
+    sceneFunctionVerticalSizing = 500;
     functionComments = "";
 
     //find the icd and draw its unsorted diagram
@@ -2327,14 +2321,13 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
     foreach (ICD icd, v_ICDs) {
         if(strcmp(selectedEntry, icd.name.c_str()) == 0)
         {
-            DrawUnsortedDiagram(icd);
             selectedICD = icd;
             break;
         }
     }
-    ui->graphicsView->horizontalScrollBar()->setValue(0);
-    ui->graphicsView->verticalScrollBar()->setValue(0);
-    ui->graphicsView->update();
+//    ui->graphicsView->horizontalScrollBar()->setValue(0);
+//    ui->graphicsView->verticalScrollBar()->setValue(0);
+//    ui->graphicsView->update();
 
     //update Function msg browser
     subItems.clear(); //MEMORY LEAKS
@@ -2381,6 +2374,7 @@ void MainWindow::onListIcdClicked(QListWidgetItem* _item)
 
     SetupDrawingArea();
     ResetScroll();
+    DrawUnsortedDiagram(selectedICD);
     SetupFunctionBrowser();
 
 }
@@ -2756,9 +2750,6 @@ void MainWindow::onAddDataExchangeClicked()
             QRectF newIcdRect = QRect(functionHorizontalSpacing, 50, 100, 50);
             newIcdName->move(newIcdRect.x()+10,newIcdRect.center().y());
 
-            if (functionHorizontalSpacing >2000)
-                icdScene->setSceneRect(0,0,5000,3500);
-
             QPointF midPoint = QLineF(newIcdRect.bottomLeft(),newIcdRect.bottomRight()).pointAt(0.5);
             QLineF modelLine = QLineF(midPoint, midPoint);
             modelLine.setP2(QPointF(midPoint.x(),midPoint.y()+cClassLineLength));
@@ -2781,6 +2772,7 @@ void MainWindow::onAddDataExchangeClicked()
             functionDrawnModels.append(newModelObject);
 
             functionHorizontalSpacing += cHorizontalSpacing;
+            CheckFunctionSceneResize();
         }
 
         QLineF dataArrow = QLine(newModelObject->line.p1().x(), functionVerticalSpacing, functionDrawnModels[1]->line.p1().x(), functionVerticalSpacing);
@@ -2789,6 +2781,7 @@ void MainWindow::onAddDataExchangeClicked()
         functionScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
 
         functionVerticalSpacing+= 30;
+        CheckFunctionSceneResize();
 
         //Draw Labels
         QPushButton *newDataName = new QPushButton(selectedPubParameter->pMname.c_str());
