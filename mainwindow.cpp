@@ -627,6 +627,8 @@ void MainWindow::ParseStdIcds()
 
                 v_ICDs.append(newICD);
 
+                ui->tabWidget->setCurrentIndex(0); //reset back to the icd tab to avoid errors
+
                 /*
                 //This takes the existing file and saves it into
                 QFile file(filePath.c_str());

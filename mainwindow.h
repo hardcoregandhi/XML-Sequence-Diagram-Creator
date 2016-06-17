@@ -316,7 +316,8 @@ public slots:
     void onLoadFunction()       { LoadFunctionScene();          }
     void onParseStdXmls()       { ParseStdIcds();
                                   SetupMessageBrowser();
-                                  SetupIcdMenu();               }
+                                  SetupIcdMenu();
+                                  SetupTaskflowScene();         }
     void onParseStockXmls()     { ParseStockIcds();
                                   SetupMessageBrowser();
                                   SetupIcdMenu();               }
