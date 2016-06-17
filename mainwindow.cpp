@@ -29,7 +29,7 @@ const int cSceneSizeIncrement = 500;
 int cHorizontalSpacing = 150; //steps
 int cVerticalSpacing = 30; //steps
 const int cTaskflowHorizontalMidpoint = 200;
-const int cTaskflowVerticalSpacing = 100;
+int cTaskflowVerticalSpacing = 100;
 const QString cIcdLocation = "/home/jryan/simulation/dev/common/icd/";
 const QString cSTDLocation = "/home/jryan/simulation/dev/common/icd/STDs/";
 const char* aModifiedStatus[] ={"eNotModified","eRemoved", "eAdded","eModified"};
@@ -114,6 +114,8 @@ MainWindow::MainWindow(QWidget *parent) :
               SLOT(onHorizontalSpacing()));
     connect(ui->actionVertical_Spacing, SIGNAL(triggered()),this,
               SLOT(onVerticalSpacing()));
+    connect(ui->actionVertical_Spacing_2, SIGNAL(triggered()),this,
+              SLOT(onTaskVerticalSpacing()));
     connect(ui->actionFunctionComments, SIGNAL(triggered()),this,
               SLOT(onFunctionComments()));
     connect(ui->actionTaskComments, SIGNAL(triggered()),this,
@@ -1713,6 +1715,17 @@ void MainWindow::onVerticalSpacing()
     RedrawFunctionScene();
 }
 
+void MainWindow::onTaskVerticalSpacing()
+{
+    bool ok;
+    int i = QInputDialog::getInt(this, tr("Enter your new vertical spacing value"),
+                                    tr("Spacing:"), cTaskflowVerticalSpacing, 10, 300, 5, &ok);
+    if (ok)
+        cTaskflowVerticalSpacing = i;
+
+    RedrawTaskflowScene();
+}
+
 void MainWindow::onFunctionComments()
 {
     bool ok;
@@ -1888,11 +1901,11 @@ void MainWindow::RedrawFunctionScene()
             else
                 tempLabel->setStyleSheet("color: rgba(0,0,0,1.0)");
 
-            if(doo->modified == aAcceptedStatus[eAccepted])
+            if(doo->accepted == aAcceptedStatus[eAccepted])
                 tempLabel->setStyleSheet("background-color: rgba(0,255,0,0.3)");
-            else if(doo->modified == aAcceptedStatus[eRejected])
+            else if(doo->accepted == aAcceptedStatus[eRejected])
                 tempLabel->setStyleSheet("background-color: rgba(255,0,0,0.3)");
-            else if(doo->modified == aAcceptedStatus[eToBeAssessed])
+            else if(doo->accepted == aAcceptedStatus[eToBeAssessed])
                 tempLabel->setStyleSheet("background-color: rgba(192,192,192,0.3)");
         }
         else
@@ -3179,7 +3192,7 @@ void MainWindow::RedrawTaskflowScene()
             newTaskRect = QRect(cTaskflowHorizontalMidpoint+75, taskflowVerticalSpacing,50,50);
             QPointF midPoint = QLineF(newTaskRect.bottomLeft(),newTaskRect.bottomRight()).pointAt(0.5);
             line = QLineF(midPoint, midPoint);
-            line.setP2(QPointF(midPoint.x(),midPoint.y()+50));
+            line.setP2(QPointF(midPoint.x(),midPoint.y()+cTaskflowVerticalSpacing-50));
             arrowHead = CreateTaskArrowHead(line);
             taskflowScene->addEllipse(newTaskRect, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
             taskflowScene->addLine(line, QPen(Qt::black));
@@ -3198,7 +3211,7 @@ void MainWindow::RedrawTaskflowScene()
             newTaskRect = QRect(cTaskflowHorizontalMidpoint, taskflowVerticalSpacing,200,50);
             QPointF midPoint = QLineF(newTaskRect.bottomLeft(),newTaskRect.bottomRight()).pointAt(0.5);
             line = QLineF(midPoint, midPoint);
-            line.setP2(QPointF(midPoint.x(),midPoint.y()+50));
+            line.setP2(QPointF(midPoint.x(),midPoint.y()+cTaskflowVerticalSpacing-50));
 
             newTaskFunctionName = new QPushButton(dtf->name);
             newTaskFunctionName->setText(dtf->name);
@@ -3234,7 +3247,7 @@ void MainWindow::RedrawTaskflowScene()
             dtf->line = line;
         }
 
-        taskflowVerticalSpacing += 100;
+        taskflowVerticalSpacing += cTaskflowVerticalSpacing;
 
     }
 }
@@ -4659,6 +4672,7 @@ void MainWindow::onFunctionDropdownMenuClicked(QAction * _action)
     functionSelectedButton = NULL;
     functionSelectedDataObject = NULL;
     RedrawFunctionScene();
+    onNewTaskflowScene();
 }
 
 void MainWindow::onTaskflowDropdownMenuClicked(QAction * _action)

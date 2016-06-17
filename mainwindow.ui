@@ -325,15 +325,22 @@
    </widget>
    <widget class="QMenu" name="menuTasks">
     <property name="enabled">
-     <bool>false</bool>
+     <bool>true</bool>
     </property>
     <property name="title">
      <string>Tasks</string>
     </property>
+    <widget class="QMenu" name="menuSpacing_2">
+     <property name="title">
+      <string>Spacing</string>
+     </property>
+     <addaction name="actionVertical_Spacing_2"/>
+    </widget>
     <addaction name="actionNew"/>
     <addaction name="actionOpen"/>
     <addaction name="actionSave_As"/>
     <addaction name="actionToggle_Task_Style"/>
+    <addaction name="menuSpacing_2"/>
     <addaction name="actionTaskComments"/>
    </widget>
    <addaction name="menuFunctions"/>
@@ -464,6 +471,11 @@
   <action name="actionReject_all_modification">
    <property name="text">
     <string>Reject all modifications</string>
+   </property>
+  </action>
+  <action name="actionVertical_Spacing_2">
+   <property name="text">
+    <string>Vertical Spacing</string>
    </property>
   </action>
  </widget>

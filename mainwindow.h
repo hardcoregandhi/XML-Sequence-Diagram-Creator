@@ -337,6 +337,7 @@ public slots:
 
     void onHorizontalSpacing();
     void onVerticalSpacing();
+    void onTaskVerticalSpacing();
     void onFunctionComments();
     void onTaskComments();
     void onRejectAllMods();
