@@ -25,7 +25,7 @@ using namespace std;
 using namespace tinyxml2;
 
 const int cClassLineLength = 2500;
-const int cSceneSizeIncrement = 2500;
+const int cSceneSizeIncrement = 500;
 int cHorizontalSpacing = 150; //steps
 int cVerticalSpacing = 30; //steps
 const int cTaskflowHorizontalMidpoint = 200;
@@ -1864,14 +1864,14 @@ void MainWindow::RedrawFunctionScene()
 
         if(doo->pubOrSub == "pub"){
             doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, targetModelObject->line.p1().x(), functionVerticalSpacing);
-            doo->arrowPoly=CreateArrowHead(doo->line, true);
+            doo->arrowPoly=CreateArrowHead(doo->line, false);
         }
         else if(doo->pubOrSub == "sub"){
             doo->line = QLine(doo->model->line.p2().x(), functionVerticalSpacing, targetModelObject->line.p1().x(), functionVerticalSpacing);
-            doo->arrowPoly=CreateArrowHead(doo->line, false);
+            doo->arrowPoly=CreateArrowHead(doo->line, true);
         }
         else if(doo->pubOrSub == "pilot"){
-            doo->line = QLine(targetModelObject->line.p1().x(), functionVerticalSpacing, doo->model->line.p2().x(), functionVerticalSpacing);
+            doo->line = QLine(doo->model->line.p1().x(), functionVerticalSpacing, pilotModelObject->line.p1().x(), functionVerticalSpacing);
             doo->arrowPoly=CreateArrowHead(doo->line, false);
         }
 
@@ -1915,6 +1915,87 @@ void MainWindow::RedrawFunctionScene()
 
         functionVerticalSpacing += cVerticalSpacing;
     }
+}
+
+void MainWindow::ResetFunctionScene()
+{
+    functionHorizontalSpacing = 350;
+    functionVerticalSpacing = 150;
+    sceneFunctionHorizontalSizing = 2500;
+    sceneFunctionVerticalSizing = 2500;
+
+    functionDrawnModels.clear();
+    functionDrawnData.clear();
+    ui->functionsGraphicsView->items().clear();
+    functionScene = new QGraphicsScene();
+    functionScene->setSceneRect(0,0,2500,2500);
+    ui->functionsGraphicsView->setScene(functionScene);
+    ui->functionsGraphicsView->setBackgroundBrush(Qt::white);
+
+    //Diagram Title
+    const char* strDiagramTitle = selectedICD.name.c_str();
+    functionTitle = strDiagramTitle;
+
+    QLabel *DiagramTitle = new QLabel(tr(strDiagramTitle));
+    DiagramTitle->setAlignment(Qt::AlignHCenter);
+    DiagramTitle->move(10,10);
+    QFont f( "Arial", 20, QFont::Bold);
+    f.setUnderline(true);
+    DiagramTitle->setFont(f);
+    functionScene->addWidget(DiagramTitle);
+
+    //Pilot
+    QRectF pilotRect = QRect(50,50,100,50);
+    QPointF pilotMidPoint = QLineF(pilotRect.bottomLeft(), pilotRect.bottomRight()).pointAt(0.5);
+    QLineF pilotClassLine = QLineF(pilotMidPoint, QPointF(pilotMidPoint.x(), pilotMidPoint.y() + cClassLineLength));
+
+    QLabel *pilotLabel = new QLabel(tr("Pilot"));
+    int width = pilotLabel->fontMetrics().boundingRect(pilotLabel->text()).width();
+    pilotLabel->move(pilotMidPoint.x() - width/2, pilotMidPoint.y()-30);
+
+    functionScene->addEllipse(pilotRect, QPen(Qt::black, 5), QBrush(Qt::black, Qt::NoBrush));
+    functionScene->addLine(pilotClassLine, QPen(Qt::black));
+    functionScene->addWidget(pilotLabel);
+
+    DrawnModelObject* newModelObject = new DrawnModelObject();
+    newModelObject->rect = pilotRect;
+    newModelObject->name = pilotLabel->text().toStdString();
+    newModelObject->line = pilotClassLine;
+    newModelObject->midpoint = pilotMidPoint;
+    newModelObject->parsedName = pilotLabel->text().toStdString();
+    newModelObject->linkedDataObjects = 99;
+
+    functionDrawnModels.append(newModelObject);
+
+    //MainModel
+    QString mainModelTitle = selectedICD.name.c_str(); //Chop the 'IcdModel' off
+
+    if(QString::compare(mainModelTitle.left(8),"IcdModel") == 0)
+        mainModelTitle.remove(0,8);
+
+    QRectF mainModelRect = QRect(200,50,100,50);
+    QPointF mainMidPoint = QLineF(mainModelRect.bottomLeft(),mainModelRect.bottomRight()).pointAt(0.5);
+    QLineF mainModelLine = QLineF(mainMidPoint, mainMidPoint);
+    mainModelLine.setP2(QPointF(mainMidPoint.x(),mainMidPoint.y()+cClassLineLength));
+
+    QLabel *mainModelName = new QLabel(mainModelTitle);
+    width = mainModelName->fontMetrics().boundingRect(mainModelName->text()).width();
+    mainModelName->move(mainMidPoint.x() - width/2, mainMidPoint.y()-30);
+
+    functionScene->addWidget(mainModelName);
+    functionScene->addRect(mainModelRect, QPen(Qt::black), QBrush(Qt::black, Qt::NoBrush));
+    functionScene->addLine(mainModelLine, QPen(Qt::black));
+
+    newModelObject = new DrawnModelObject();
+    newModelObject->rect = mainModelRect;
+    newModelObject->name = strDiagramTitle;
+    newModelObject->line = mainModelLine;
+    newModelObject->midpoint = mainMidPoint;
+    newModelObject->parsedName = mainModelTitle.toStdString();
+    functionDrawnModels.append(newModelObject);
+
+    functionSelectedButton = NULL;
+    functionSelectedDataObject = NULL;
 }
 
 void MainWindow::SaveFunctionScene()
@@ -2739,6 +2820,11 @@ void MainWindow::onAddDataExchangeClicked()
 
 void MainWindow::onAddPilotInteraction()
 {
+    DrawnModelObject* newModelObject = new DrawnModelObject();
+    QString parsedpMsgName;
+    bool newModelToBeDrawn = true;
+    PubMessage* selectedPub;
+
     CheckFunctionSceneResize();
 
     bool ok;
@@ -2747,36 +2833,105 @@ void MainWindow::onAddPilotInteraction()
                                            tr(""), &ok);
     if (ok && !text.isEmpty())
     {
-        DrawnModelObject* pilotModelObject = functionDrawnModels[0];
-        DrawnModelObject* targetModelObject = functionDrawnModels[1];
+        bool ok2;
+        QStringList items;
+        foreach (PubMessage* pm, selectedICD.v_pPublishedMessages) {
+            parsedpMsgName = QString::fromStdString(pm->pMname);
+            items.append(parsedpMsgName);
+        }
+        items.append(QString::fromStdString(functionDrawnModels[1]->parsedName));
+        QString model = QInputDialog::getItem(this, tr("Add Pilot Interaction"),
+                                               tr("To Model:"), items, 0, false, &ok2);
+        if (ok2 && !model.isEmpty())
+        {
+            if(model == QString::fromStdString(functionDrawnModels[1]->parsedName))
+            {
+                newModelToBeDrawn = false;
+                newModelObject = functionDrawnModels[1];
+            }
+            else
+            {
+                foreach (PubMessage* pm, selectedICD.v_pPublishedMessages) {
+                    if(model == QString::fromStdString(pm->pMname))
+                    {
+                        selectedPub = pm;
+                    }
+                }
+            }
 
-        QLineF dataArrow = QLine(targetModelObject->line.p1().x(), functionVerticalSpacing, pilotModelObject->line.p1().x(), functionVerticalSpacing);
-        QPolygonF arrowPoly = CreateArrowHead(dataArrow, false);
-        functionScene->addLine(dataArrow);
-        functionScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
+            model.remove("Msg", Qt::CaseSensitive);
+            model.remove(selectedICD.parsedName.c_str(), Qt::CaseSensitive);
 
-        functionVerticalSpacing+= 30;
+            //Validation check for duplicates
+            foreach (DrawnModelObject* drawn, functionDrawnModels) {
+                if(strcmp(model.toStdString().c_str(), drawn->parsedName.c_str()) == 0)
+                {
+                    newModelToBeDrawn = false;
+                    newModelObject = drawn;
+                }
+            }
 
-        //Draw Labels
-        QPushButton *newDataName = new QPushButton(text);
-        newDataName->setFlat(true);
-        newDataName->setStyleSheet("background-color: transparent");
-        newDataName->move(dataArrow.p2().x()+15,dataArrow.p2().y()-25);
-        functionScene->addWidget(newDataName);
+            //Draw new Model if needed
+            if(newModelToBeDrawn)
+            {
+                QRectF newIcdRect = QRect(functionHorizontalSpacing, 50, 100, 50);
+                QPointF midPoint = QLineF(newIcdRect.bottomLeft(),newIcdRect.bottomRight()).pointAt(0.5);
+                QLineF modelLine = QLineF(midPoint, midPoint);
+                modelLine.setP2(QPointF(midPoint.x(),midPoint.y()+cClassLineLength));
 
-        connect(newDataName, SIGNAL(clicked()),
-                    this, SLOT(onDataObjectClicked()));
+                QLabel *mainModelName = new QLabel(model);
+                int width = mainModelName->fontMetrics().boundingRect(mainModelName->text()).width();
+                mainModelName->move(midPoint.x() - width/2, midPoint.y()-30);
 
-        //Add the New Data Object to the DataVector
-        DrawnDataObject* newData = new DrawnDataObject();
-        newData->arrowPoly = arrowPoly;
-        newData->label = newDataName;
-        newData->line = dataArrow;
-        newData->model = pilotModelObject;
-        newData->name = text.toStdString();
-        newData->pubOrSub = "pilot";
+                functionScene->addLine(modelLine, QPen(Qt::black));
+                functionScene->addRect(newIcdRect, QPen(Qt::black), QBrush(Qt::black, Qt::NoBrush));
+                functionScene->addWidget(mainModelName);
 
-        functionDrawnData.append(newData);
+                //Add the New Model Object to the ModelVector
+                newModelObject->rect = newIcdRect;
+                newModelObject->name = selectedPub->pMname.c_str();
+                newModelObject->line = modelLine;
+                newModelObject->label = mainModelName;
+                newModelObject->midpoint = midPoint;
+                newModelObject->parsedName = model.toStdString();
+                newModelObject->linkedDataObjects++;
+
+                functionDrawnModels.append(newModelObject);
+
+                functionHorizontalSpacing += cHorizontalSpacing;
+            }
+
+            DrawnModelObject* pilotModelObject = functionDrawnModels[0];
+            DrawnModelObject* targetModelObject = functionDrawnModels[1];
+
+            QLineF dataArrow = QLine(newModelObject->line.p1().x(), functionVerticalSpacing, pilotModelObject->line.p1().x(), functionVerticalSpacing);
+            QPolygonF arrowPoly = CreateArrowHead(dataArrow, false);
+            functionScene->addLine(dataArrow);
+            functionScene->addPolygon(arrowPoly, QPen(Qt::red), QBrush(Qt::red, Qt::SolidPattern));
+
+            functionVerticalSpacing+= 30;
+
+            //Draw Labels
+            QPushButton *newDataName = new QPushButton(text);
+            newDataName->setFlat(true);
+            newDataName->setStyleSheet("background-color: transparent");
+            newDataName->move(dataArrow.p2().x()+15,dataArrow.p2().y()-25);
+            functionScene->addWidget(newDataName);
+
+            connect(newDataName, SIGNAL(clicked()),
+                        this, SLOT(onDataObjectClicked()));
+
+            //Add the New Data Object to the DataVector
+            DrawnDataObject* newData = new DrawnDataObject();
+            newData->arrowPoly = arrowPoly;
+            newData->label = newDataName;
+            newData->line = dataArrow;
+            newData->model = newModelObject;
+            newData->name = text.toStdString();
+            newData->pubOrSub = "pilot";
+
+            functionDrawnData.append(newData);
+        }
     }
 }
 

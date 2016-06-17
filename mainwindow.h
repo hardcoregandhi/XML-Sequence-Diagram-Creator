@@ -282,6 +282,7 @@ public:
     void CheckTaskflowSceneResize();
 
     void RedrawFunctionScene();
+    void ResetFunctionScene();
     void SaveFunctionScene();
     void LoadFunctionScene();
     void LoadCustomFunctionScene(QString _fileName);
