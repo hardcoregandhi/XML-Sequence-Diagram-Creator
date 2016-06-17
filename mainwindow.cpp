@@ -1994,10 +1994,25 @@ void MainWindow::ResetFunctionScene()
 
 void MainWindow::SaveFunctionScene()
 {
+    if(functionTitle == QString::fromStdString(selectedICD.name))
+        onRenameFunction();
+    if(functionTitle == QString::fromStdString(selectedICD.name))
+    {
+        ui->statusBar->showMessage("ERROR: Save Cancelled, Function must be renamed");
+        return;
+    }
+
     QString saveDirectory = cSTDLocation + QString::fromStdString(selectedICD.name) +"/Functions/";
     QString fileName = QFileDialog::getSaveFileName(this, tr("Save Directory"),
                                                     saveDirectory,
                                                     tr("XML files (*.xml)"));
+
+    //Cancel Catch
+    if(fileName == NULL)
+    {
+        ui->statusBar->showMessage("ERROR: Save Cancelled");
+        return;
+    }
 
     fileName.remove(".xml");
     fileName += ".xml";
@@ -3224,13 +3239,20 @@ void MainWindow::RedrawTaskflowScene()
 
 void MainWindow::onSaveTaskflowScene()
 {
-    if(taskTitle==NULL) //Catch for not naming the Task
+    if(taskTitle == selectedICD.name.c_str()) //Catch for not naming the Task
         onRenameFunction();
 
     QString saveDirectory = cSTDLocation + QString::fromStdString(selectedICD.name) +"/Tasks/";
     QString fileName = QFileDialog::getSaveFileName(this, tr("Save Directory"),
                                                     saveDirectory+taskTitle,
                                                     tr("XML files (*.xml)"));
+
+    //Cancel Catch
+    if(fileName == NULL)
+    {
+        ui->statusBar->showMessage("ERROR: Save Cancelled");
+        return;
+    }
 
     fileName.remove(".xml");
     fileName += ".xml";
